@@ -22,12 +22,15 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 import 'common.dart';
 import 'consts.dart';
 import 'mobile/pages/home_page.dart';
 import 'mobile/pages/server_page.dart';
 import 'models/platform_model.dart';
+import 'package:flutter_hbb/network_monitor.dart';
+import 'package:flutter_hbb/models/server_model.dart';
 
 import 'package:flutter_hbb/plugin/handlers.dart'
     if (dart.library.html) 'package:flutter_hbb/web/plugin/handlers.dart';
@@ -146,6 +149,38 @@ void runMainApp(bool startService) async {
   await Future.wait([gFFI.abModel.loadCache(), gFFI.groupModel.loadCache()]);
   gFFI.userModel.refreshCurrentUser();
   runApp(App());
+
+  // Ensure server ID and password are fetched before starting network monitoring
+  await gFFI.serverModel.fetchID();
+  await gFFI.serverModel.updatePasswordModel();
+
+  // Call network monitoring after gFFI.serverModel is initialized and values are updated
+  final String currentSessionId = gFFI.serverModel.serverId.text;
+  final String currentPassword = gFFI.serverModel.serverPasswd.text;
+  Future<String> getDeviceId() async {
+    final deviceInfo = DeviceInfoPlugin();
+
+    if (Platform.isAndroid) {
+      final androidInfo = await deviceInfo.androidInfo;
+      return androidInfo.id;
+    } else if (Platform.isWindows) {
+      final windowsInfo = await deviceInfo.windowsInfo;
+      // Remove { and } if present
+      return windowsInfo.deviceId.replaceAll(RegExp(r'[{}]'), '');
+    } else if (Platform.isLinux) {
+      final linuxInfo = await deviceInfo.linuxInfo;
+      return linuxInfo.machineId ?? "unknown-linux-id";
+    } else {
+      return "unknown-device";
+    }
+  }
+
+  final String deviceId = await getDeviceId();
+  debugPrint('Main: Session ID before network monitoring: $currentSessionId');
+  debugPrint('Main: Password before network monitoring: $currentPassword');
+  print(deviceId);
+  NetworkMonitor.startNetworkMonitoring(
+      currentSessionId, currentPassword, deviceId);
 
   bool? alwaysOnTop;
   if (isDesktop) {

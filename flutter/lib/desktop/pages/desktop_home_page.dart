@@ -59,15 +59,84 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget build(BuildContext context) {
     super.build(context);
     final isIncomingOnly = bind.isIncomingOnly();
-    return _buildBlock(
-        child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final isDesktop = Platform.isWindows || Platform.isLinux;
+
+    return Stack(
       children: [
-        buildLeftPane(context),
-        if (!isIncomingOnly) const VerticalDivider(width: 1),
-        if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
+        // Layer 1: Background image (only on desktop)
+        if (isDesktop)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/XconnectBackground.jpg'),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+
+        // Layer 2: Main RustDesk UI (conditionally visible)
+        _buildBlock(
+          child: Visibility(
+            visible: !isDesktop, // Show the original UI only if not on desktop
+            maintainState: true,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                buildLeftPane(context),
+                if (!isIncomingOnly) const VerticalDivider(width: 1),
+                if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
+              ],
+            ),
+          ),
+        ),
+
+        // Layer 3: Splash screen elements (only on desktop)
+        if (isDesktop)
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  margin:
+                      const EdgeInsets.only(bottom: 15), // 5px bottom margin
+                  child: Image.asset(
+                    'assets/XconnectLogo.png',
+                    width: 250,
+                    height: 75,
+                  ),
+                ),
+                SizedBox(
+                  width: 150, // Adjust width as needed for your design
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.circular(10), // Radius for rounded edges
+                    child: LinearProgressIndicator(
+                      minHeight: 8.0, // Height of the progress bar
+                      backgroundColor: Colors.white.withOpacity(0.3),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.blue.shade600,
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 10), // 5px top margin
+                  child: Text(
+                    "Waiting for connection",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
-    ));
+    );
   }
 
   Widget _buildBlock({required Widget child}) {
@@ -694,6 +763,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       await gFFI.serverModel.fetchID();
+      await gFFI.serverModel
+          .updatePasswordModel(); // Ensure password is also updated
       final error = await bind.mainGetError();
       if (systemError != error) {
         systemError = error;

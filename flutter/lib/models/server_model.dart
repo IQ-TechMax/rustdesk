@@ -613,12 +613,12 @@ class ServerModel with ChangeNotifier {
   void showLoginDialog(Client client) {
     showClientDialog(
       client,
-      client.isFileTransfer 
-          ? "Transfer file" 
+      client.isFileTransfer
+          ? "Transfer file"
           : client.isViewCamera
               ? "View camera"
-              : client.isTerminal 
-                  ? "Terminal" 
+              : client.isTerminal
+                  ? "Terminal"
                   : "Share screen",
       'Do you accept?',
       'android_new_connection_tip',
@@ -838,8 +838,17 @@ class Client {
 
   RxInt unreadChatMessageCount = 0.obs;
 
-  Client(this.id, this.authorized, this.isFileTransfer, this.isViewCamera,
-      this.name, this.peerId, this.keyboard, this.clipboard, this.audio);
+  Client(
+      this.id,
+      this.authorized,
+      this.isFileTransfer,
+      this.isViewCamera,
+      this.name,
+      this.peerId,
+      this.keyboard,
+      this.clipboard,
+      this.audio,
+      this.file);
 
   Client.fromJson(Map<String, dynamic> json) {
     id = json['id'];

@@ -19,7 +19,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.4.2+60
 
 environment:
-  sdk: '^3.1.0'
+  sdk: "^3.1.0"
 
 dependencies:
   flutter:
@@ -45,6 +45,7 @@ dependencies:
   settings_ui: ^2.0.2
   flutter_breadcrumb: ^1.0.1
   http: ^1.1.0
+  connectivity_plus: ^5.0.2
   qr_code_scanner: ^1.0.0
   zxing2: ^0.2.0
   image_picker: ^1.1.2
@@ -151,6 +152,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
+    - assets/XconnectBackground.jpg
+    - assets/XconnectLogo.png
 
   fonts:
     - family: GestureIcons
