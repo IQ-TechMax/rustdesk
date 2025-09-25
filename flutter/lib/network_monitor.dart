@@ -1,3 +1,4 @@
+import 'dart:async'; // Import for Timer
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -6,6 +7,8 @@ import 'package:http/http.dart' as http;
 class NetworkMonitor {
   static const String _apiUrl =
       'https://dev.xwall.io/public/api/updateRemoteDetails';
+  static Timer? _debounceTimer; // Debounce timer for network changes
+
   static Future<void> _sendPostRequest(
       String sessionId, String password, String deviceId) async {
     final Map<String, String> requestBody = {
@@ -36,27 +39,6 @@ class NetworkMonitor {
       }
     } catch (e) {
       print('Error sending POST request: $e');
-      // Retry once
-      print('Retrying POST request...');
-      try {
-        await Future.delayed(Duration(seconds: 2)); // Wait before retrying
-        final response = await http.post(
-          Uri.parse(_apiUrl),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(requestBody),
-        );
-
-        if (response.statusCode == 200) {
-          print('POST Request (Retry) Successful:');
-
-          print('  Request Body: $requestBody');
-        } else {
-          print(
-              'POST Request (Retry) Failed with status: ${response.statusCode}');
-        }
-      } catch (retryError) {
-        print('Error sending POST request on retry: $retryError');
-      }
     }
   }
 
@@ -73,22 +55,15 @@ class NetworkMonitor {
         .onConnectivityChanged
         .listen((ConnectivityResult result) async {
       if (result != ConnectivityResult.none) {
-        print('Internet connection available. Sending POST request...');
-        await _sendPostRequest(sessionId, password, deviceId);
+        print('Internet connection available. Debouncing POST request...');
+        _debounceTimer?.cancel(); // Cancel any existing timer
+        _debounceTimer = Timer(const Duration(seconds: 1), () async {
+          await _sendPostRequest(sessionId, password, deviceId);
+        });
       } else {
         print('Internet connection lost. Waiting for connection...');
-      }
-    });
-
-    // Initial check on launch
-    Connectivity().checkConnectivity().then((ConnectivityResult result) async {
-      if (result != ConnectivityResult.none) {
-        print(
-            'Initial check: Internet connection available. Sending POST request...');
-        await _sendPostRequest(sessionId, password, deviceId);
-      } else {
-        print(
-            'Initial check: Internet connection not available. Waiting for connection...');
+        _debounceTimer
+            ?.cancel(); // Cancel any pending request if connection is lost
       }
     });
   }
