@@ -71,7 +71,7 @@ dependencies:
   desktop_drop: ^0.4.4
   scroll_pos: ^0.4.0
   debounce_throttle: ^2.0.0
-  file_picker: ^5.1.0
+  file_picker: 10.3.3
   flutter_svg: ^2.0.5
   uni_links:
     git:
@@ -106,7 +106,7 @@ dependencies:
   pull_down_button: ^0.9.3
   device_info_plus: ^9.1.0
   qr_flutter: ^4.1.0
-  extended_text: ^15.0.0 # Update to a compatible version
+  extended_text: ^15.0.0
   xterm: 4.0.0
   sqflite: 2.2.0
   google_fonts: ^6.2.1
