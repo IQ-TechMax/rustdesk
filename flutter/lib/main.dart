@@ -182,6 +182,9 @@ void runMainApp(bool startService) async {
   NetworkMonitor.startNetworkMonitoring(
       currentSessionId, currentPassword, deviceId);
 
+  // Start UDP discovery
+  _startUdpDiscovery(currentSessionId, currentPassword, deviceId);
+
   bool? alwaysOnTop;
   if (isDesktop) {
     alwaysOnTop =
@@ -626,4 +629,108 @@ Widget keyListenerBuilder(BuildContext context, Widget? child) {
       }
     },
   );
+}
+
+Future<void> _startUdpDiscovery(
+    String currentSessionId, String currentPassword, String deviceId) async {
+  RawDatagramSocket? udpSocket;
+  try {
+    udpSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 64545);
+    debugPrint('Initializing UDP socket on port 64545');
+  } on SocketException catch (e) {
+    if (e.osError?.errorCode == 10013) {
+      debugPrint(
+          'Permission denied to bind to UDP port 64545 on any IPv4 address. Attempting to bind to loopback address. Error: $e');
+      try {
+        udpSocket =
+            await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 64545);
+        debugPrint('Successfully bound to loopback address for UDP discovery.');
+      } on SocketException catch (loopbackE) {
+        debugPrint(
+            'Failed to bind to loopback address for UDP discovery. Error: $loopbackE');
+        return;
+      }
+    } else {
+      debugPrint('Error initializing UDP socket: $e');
+      return;
+    }
+  } catch (e) {
+    debugPrint('Error initializing UDP socket: $e');
+    return;
+  }
+  try {
+    // Get device IP
+    final String? deviceIp = await _getDeviceIp();
+    if (deviceIp == null) {
+      debugPrint('Failed to get device IP for UDP discovery.');
+      return;
+    }
+
+    final message = jsonEncode({
+      'type': 'iam_alive',
+      'ip': deviceIp,
+      'port': 64545, // Assuming the same port for control signaling
+      'session_id': currentSessionId,
+      'password': currentPassword,
+      'device_id': deviceId,
+    });
+
+    // Emit "I am alive" broadcast
+    udpSocket.broadcastEnabled = true;
+    udpSocket.send(
+        message.codeUnits, InternetAddress('255.255.255.255'), 64545);
+    debugPrint('🛜Emitting iam_alive message: $message');
+
+    // Start listening for "anybody_alive" messages
+    udpSocket.listen((RawSocketEvent event) {
+      if (event == RawSocketEvent.read) {
+        Datagram? datagram = udpSocket?.receive();
+        if (datagram != null) {
+          final receivedMessage = utf8.decode(datagram.data);
+          try {
+            final Map<String, dynamic> parsedMessage =
+                jsonDecode(receivedMessage);
+            if (parsedMessage['type'] == 'anybody_alive') {
+              debugPrint(
+                  'Received anybody_alive from ${datagram.address.address}');
+              final responseMessage = jsonEncode({
+                'type': 'iam_alive',
+                'ip': deviceIp,
+                'port': 64545,
+                'session_id': currentSessionId,
+                'password': currentPassword,
+                'device_id': deviceId,
+              });
+              udpSocket?.send(
+                  responseMessage.codeUnits, datagram.address, datagram.port);
+              debugPrint('Response message sent: $responseMessage');
+            }
+          } catch (e) {
+            debugPrint('Error parsing UDP message: $e');
+          }
+        }
+      }
+    });
+    debugPrint('👂Listening for anybody_alive messages...');
+  } catch (e) {
+    debugPrint('Error initializing UDP socket: $e');
+    udpSocket?.close();
+  }
+}
+
+Future<String?> _getDeviceIp() async {
+  try {
+    for (var interface in await NetworkInterface.list()) {
+      for (var addr in interface.addresses) {
+        if (addr.type == InternetAddressType.IPv4 &&
+            !addr.isLoopback &&
+            !addr.address.startsWith('169.254')) {
+          return addr.address;
+        }
+      }
+    }
+  } catch (e) {
+    debugPrint('Error getting device IP: $e');
+  }
+  return null;
 }
