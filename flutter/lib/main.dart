@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_hbb/linux_tcp_listener/tcp_listener.dart';
+
 import 'package:bot_toast/bot_toast.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
@@ -148,7 +150,13 @@ void runMainApp(bool startService) async {
   }
   await Future.wait([gFFI.abModel.loadCache(), gFFI.groupModel.loadCache()]);
   gFFI.userModel.refreshCurrentUser();
-  runApp(App());
+  _runApp(
+    isWeb
+        ? '${bind.mainGetAppNameSync()} Web Client V2 (Preview)'
+        : bind.mainGetAppNameSync(),
+    App(),
+    MyTheme.currentThemeMode(),
+  );
 
   // Ensure server ID and password are fetched before starting network monitoring
   await gFFI.serverModel.fetchID();
@@ -466,9 +474,18 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> with WidgetsBindingObserver {
+  TcpListener? _tcpListener;
+
   @override
   void initState() {
     super.initState();
+    _tcpListener = TcpListener(
+      port: 64546, // Use a different port than UDP
+      onMessageReceived: (message) {
+        debugPrint('TCP Message Received: $message');
+      },
+    );
+    _tcpListener?.start();
     WidgetsBinding.instance.window.onPlatformBrightnessChanged = () {
       final userPreference = MyTheme.getThemeModePreference();
       if (userPreference != ThemeMode.system) return;
@@ -495,6 +512,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _tcpListener?.stop();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -521,68 +539,20 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    // final analytics = FirebaseAnalytics.instance;
-    final botToastBuilder = BotToastInit();
-    return RefreshWrapper(builder: (context) {
-      return MultiProvider(
-        providers: [
-          // global configuration
-          // use session related FFI when in remote control or file transfer page
-          ChangeNotifierProvider.value(value: gFFI.ffiModel),
-          ChangeNotifierProvider.value(value: gFFI.imageModel),
-          ChangeNotifierProvider.value(value: gFFI.cursorModel),
-          ChangeNotifierProvider.value(value: gFFI.canvasModel),
-          ChangeNotifierProvider.value(value: gFFI.peerTabModel),
-        ],
-        child: GetMaterialApp(
-          navigatorKey: globalKey,
-          debugShowCheckedModeBanner: false,
-          title: isWeb
-              ? '${bind.mainGetAppNameSync()} Web Client V2 (Preview)'
-              : bind.mainGetAppNameSync(),
-          theme: MyTheme.lightTheme,
-          darkTheme: MyTheme.darkTheme,
-          themeMode: MyTheme.currentThemeMode(),
-          home: isDesktop
-              ? const DesktopTabPage()
-              : isWeb
-                  ? WebHomePage()
-                  : HomePage(),
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: supportedLocales,
-          navigatorObservers: [
-            // FirebaseAnalyticsObserver(analytics: analytics),
-            BotToastNavigatorObserver(),
-          ],
-          builder: isAndroid
-              ? (context, child) => AccessibilityListener(
-                    child: MediaQuery(
-                      data: MediaQuery.of(context).copyWith(
-                        textScaler: TextScaler.linear(1.0),
-                      ),
-                      child: child ?? Container(),
-                    ),
-                  )
-              : (context, child) {
-                  child = _keepScaleBuilder(context, child);
-                  child = botToastBuilder(context, child);
-                  if ((isDesktop && desktopType == DesktopType.main) ||
-                      isWebDesktop) {
-                    child = keyListenerBuilder(context, child);
-                  }
-                  if (isLinux) {
-                    return buildVirtualWindowFrame(context, child);
-                  } else {
-                    return workaroundWindowBorder(context, child);
-                  }
-                },
-        ),
-      );
-    });
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: gFFI.ffiModel),
+        ChangeNotifierProvider.value(value: gFFI.imageModel),
+        ChangeNotifierProvider.value(value: gFFI.cursorModel),
+        ChangeNotifierProvider.value(value: gFFI.canvasModel),
+        ChangeNotifierProvider.value(value: gFFI.peerTabModel),
+      ],
+      child: isDesktop
+          ? const DesktopTabPage()
+          : isWeb
+              ? WebHomePage()
+              : HomePage(),
+    );
   }
 }
 
