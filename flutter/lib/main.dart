@@ -414,7 +414,7 @@ void _runApp(
       theme: MyTheme.lightTheme,
       darkTheme: MyTheme.darkTheme,
       themeMode: themeMode,
-      home: home,
+      home: Scaffold(body: home),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
