@@ -481,6 +481,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
     super.initState();
     _tcpListener = TcpListener(
       port: 64546, // Use a different port than UDP
+      ffi: gFFI,
       onMessageReceived: (message) {
         debugPrint('TCP Message Received: $message');
       },
