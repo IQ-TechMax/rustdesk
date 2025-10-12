@@ -94,12 +94,12 @@ class TcpListener {
             _log('❌Failed to get local IP: $e');
           }
 
-          final String password = 'linux_placeholder_password';
+          final String password = gFFI.serverModel.serverPasswd.text;
 
           final Map<String, dynamic> gcResponse = {
             'action': 'GC_RESPONSE',
             'ip': localIp,
-            'port': kGcResponsePort,
+            'port': 12345,
             'password': password,
           };
 
