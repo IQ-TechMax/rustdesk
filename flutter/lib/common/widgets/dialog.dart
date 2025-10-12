@@ -878,13 +878,18 @@ _connectDialog(
   }
 
   dialogManager.dismissAll();
+  // Define submit and cancel functions outside the show method to make them accessible
+  // for the auto-submit logic.
+  late Function submit;
+  late Function cancel;
+
   dialogManager.show((setState, close, context) {
-    cancel() {
+    cancel = () {
       close();
       closeConnection();
-    }
+    };
 
-    submit() {
+    submit = () {
       if (osUsernameController != null) {
         if (osUsernameController.text.trim().isEmpty) {
           errUsername.value = translate('Empty Username');
@@ -912,7 +917,7 @@ _connectDialog(
       close();
       dialogManager.showLoading(translate('Logging in...'),
           onCancel: closeConnection);
-    }
+    };
 
     descWidget(String text) {
       return Column(
@@ -1035,19 +1040,27 @@ _connectDialog(
         dialogButton(
           'Cancel',
           icon: Icon(Icons.close_rounded),
-          onPressed: cancel,
+          onPressed: cancel as VoidCallback,
           isOutline: true,
         ),
         dialogButton(
           'OK',
           icon: Icon(Icons.done_rounded),
-          onPressed: submit,
+          onPressed: submit as VoidCallback,
         ),
       ],
-      onSubmit: submit,
-      onCancel: cancel,
+      onSubmit: submit as Function(),
+      onCancel: cancel as Function(),
     );
   });
+
+  // Automatically submit if password is pre-filled
+  if (passwordController != null && passwordController.text.isNotEmpty) {
+    // Delay to allow the dialog to fully build and render before attempting to submit
+    Future.delayed(Duration(milliseconds: 100), () {
+      submit();
+    });
+  }
 }
 
 void showWaitUacDialog(

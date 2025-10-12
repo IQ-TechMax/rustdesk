@@ -768,6 +768,7 @@ class OverlayDialogManager {
   final Map<String, Dialog> _dialogs = {};
   var _overlayKeyState = OverlayKeyState();
   int _tagCount = 0;
+  String? _autoConnectPassword;
 
   OverlayEntry? _mobileActionsOverlayEntry;
   RxBool mobileActionsOverlayVisible = true.obs;
@@ -957,6 +958,14 @@ class OverlayDialogManager {
 
   bool existing(String tag) {
     return _dialogs.keys.contains(tag);
+  }
+
+  void setPasswordForAutoConnect(String? password) {
+    _autoConnectPassword = password;
+  }
+
+  String? getPasswordForAutoConnect() {
+    return _autoConnectPassword;
   }
 }
 
@@ -2431,7 +2440,8 @@ connect(BuildContext context, String id,
     bool forceRelay = false,
     String? password,
     String? connToken,
-    bool? isSharedPassword}) async {
+    bool? isSharedPassword,
+    bool isAutoConnect = false}) async {
   if (id == '') return;
   if (!isDesktop || desktopType == DesktopType.main) {
     try {

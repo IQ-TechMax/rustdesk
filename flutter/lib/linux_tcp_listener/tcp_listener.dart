@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:developer'; // For logging
+import 'package:flutter_hbb/common.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_hbb/main.dart';
 
 const int kGcResponsePort = 64546; // Port for GC response
 
@@ -53,8 +55,23 @@ class TcpListener {
         // Handle TC: just log
         if (action == 'TC') {
           _log('[TC] Received TC request from ${client.remoteAddress.address}');
-          _log(
-              '[TC] IP: ${jsonMsg['ip']}, PORT: ${jsonMsg['port']}, PASSWORD: ${jsonMsg['password']}');
+          final ip = jsonMsg['ip'];
+          final port = jsonMsg['port'];
+          final password = jsonMsg['password'];
+          _log('[TC] IP: $ip, PORT: $port, PASSWORD: $password');
+
+          // Programmatically initiate connection
+          if (ip != null && port != null && password != null) {
+            // Ensure Flutter is ready to handle UI updates
+            Future.delayed(Duration.zero, () {
+              connect(
+                globalKey.currentContext!,
+                '$ip:$port',
+                password: password,
+                isAutoConnect: true,
+              );
+            });
+          }
         }
 
         // Handle GC: respond with IP, port, password
