@@ -1,25 +1,55 @@
-import 'dart:io';
+// tcp_listener.dart
+import 'dart:async';
 import 'dart:convert';
-import 'dart:developer'; // For logging
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_hbb/main.dart';
+import 'dart:io';
+import 'dart:developer';
 
-const int kGcResponsePort = 64546; // Port for GC response
+import 'package:flutter/foundation.dart';
+import 'package:flutter_hbb/main.dart'; // keep if connect() and globalKey are used
+import 'package:flutter_hbb/common.dart';
+
+// Use the TCP_PORT defined in main.dart
+// const int kGcResponsePort = 64546; // Port for GC response
+const int _tcpBindRetryCount = 3;
+const Duration _tcpBindRetryDelay = Duration(seconds: 1);
 
 class TcpListener {
   ServerSocket? _serverSocket;
   final int port;
+  bool _running = false;
 
   TcpListener({required this.port});
 
   Future<void> start() async {
-    try {
-      _serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, port);
-      _log('TCP Listener started on port $port');
-      _serverSocket?.listen(_handleSocket);
-    } catch (e) {
-      _log('❌Failed to start TCP Listener: $e');
+    if (_running) {
+      _log('TCP Listener already running; skipping start');
+      return;
+    }
+    _running = true;
+
+    int attempt = 0;
+    while (attempt < _tcpBindRetryCount) {
+      attempt++;
+      try {
+        // 'shared: true' allows multiple processes/isolates to bind in some platforms.
+        _serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, port,
+            shared: true);
+        _log('TCP Listener started on port $port (attempt $attempt)');
+        _serverSocket?.listen(_handleSocket, onError: (e) {
+          _log('ServerSocket listen error: $e');
+        });
+        return;
+      } catch (e) {
+        _log(
+            '❌Failed to bind TCP Listener on port $port (attempt $attempt): $e');
+        if (attempt < _tcpBindRetryCount) {
+          await Future.delayed(_tcpBindRetryDelay);
+        } else {
+          _log('❌Exceeded retry attempts to bind TCP listener on port $port.');
+          _running = false;
+          return;
+        }
+      }
     }
   }
 
@@ -36,12 +66,19 @@ class TcpListener {
       onDone: () {
         _log(
             'Client disconnected: ${clientSocket.remoteAddress.address}:${clientSocket.remotePort}');
-        clientSocket.destroy();
+        try {
+          clientSocket.destroy();
+        } catch (e) {
+          _log('Error destroying client socket: $e');
+        }
       },
       onError: (e) {
         _log('❌Socket error: $e');
-        clientSocket.destroy();
+        try {
+          clientSocket.destroy();
+        } catch (_) {}
       },
+      cancelOnError: true,
     );
   }
 
@@ -49,87 +86,100 @@ class TcpListener {
     try {
       final Map<String, dynamic> jsonMsg = jsonDecode(message);
 
-      if (jsonMsg.containsKey('action')) {
-        final String action = jsonMsg['action'];
+      if (!jsonMsg.containsKey('action')) {
+        _log('❌Invalid request received (no action): $message');
+        return;
+      }
 
-        // Handle TC: just log
-        if (action == 'TC') {
-          _log('[TC] Received TC request from ${client.remoteAddress.address}');
-          final ip = jsonMsg['ip'];
-          final port = jsonMsg['port'];
-          final password = jsonMsg['password'];
-          _log('[TC] IP: $ip, PORT: $port, PASSWORD: $password');
+      final String action = jsonMsg['action'];
 
-          // Programmatically initiate connection
-          if (ip != null && port != null && password != null) {
-            // Ensure Flutter is ready to handle UI updates
-            Future.delayed(Duration.zero, () {
-              connect(
-                globalKey.currentContext!,
-                '$ip:$port',
-                password: password,
-                isAutoConnect: true,
-              );
-            });
-          }
-        }
+      // TC: incoming instruction to "take control" — we should initiate connect()
+      if (action == 'TC') {
+        _log('[TC] Received TC request from ${client.remoteAddress.address}');
+        final ip = jsonMsg['ip']?.toString();
+        final port = jsonMsg['port'];
+        final password = jsonMsg['password']?.toString();
+        _log('[TC] IP: $ip, PORT: $port');
 
-        // Handle GC: respond with IP, port, password
-        else if (action == 'GC_REQUEST') {
-          _log('[GC] Received GC request from ${client.remoteAddress.address}');
-
-          // Get local IP
-          String localIp = '';
-          try {
-            for (var interface in await NetworkInterface.list()) {
-              for (var addr in interface.addresses) {
-                if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
-                  localIp = addr.address;
-                  break;
-                }
-              }
-              if (localIp.isNotEmpty) break;
+        if (ip != null && port != null && password != null) {
+          // Ensure UI thread/context is used for connect
+          Future.delayed(Duration.zero, () {
+            try {
+              connect(globalKey.currentContext!, '$ip:$port',
+                  password: password, isAutoConnect: true);
+              _log('[TC] Auto connect triggered to $ip:$port');
+            } catch (e) {
+              _log('[TC] Auto connect error: $e');
             }
-          } catch (e) {
-            _log('❌Failed to get local IP: $e');
+          });
+        } else {
+          _log('[TC] Missing fields in TC message.');
+        }
+      }
+
+      // GC_REQUEST: reply with IP/port/password and an ack that Windows expects.
+      else if (action == 'GC_REQUEST') {
+        _log('[GC] Received GC_REQUEST from ${client.remoteAddress.address}');
+
+        // Determine local IP (non-loopback) safely
+        String localIp = '';
+        try {
+          for (var interface in await NetworkInterface.list()) {
+            for (var addr in interface.addresses) {
+              if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
+                localIp = addr.address;
+                break;
+              }
+            }
+            if (localIp.isNotEmpty) break;
           }
-
-          final String password = gFFI.serverModel.serverPasswd.text;
-
-          final Map<String, dynamic> gcResponse = {
-            'action': 'GC_RESPONSE',
-            'ip': localIp,
-            'port': 12345,
-            'password': password,
-          };
-
-          try {
-            client.write(jsonEncode(gcResponse));
-            _log('[GC] Sent GC response: $gcResponse');
-          } catch (e) {
-            _log('❌Failed to send GC response: $e');
-          }
+        } catch (e) {
+          _log('❌Failed to get local IP: $e');
         }
 
-        // Unknown action
-        else {
-          _log('❌Unknown action received: $action');
+        final String password = gFFI.serverModel.serverPasswd.text;
+        final Map<String, dynamic> gcResponse = {
+          'ack': 'GC_ACK', // NOTE: Windows checks for this field
+          'action': 'GC_RESPONSE',
+          'ip': localIp.isNotEmpty ? localIp : '0.0.0.0',
+          'port':
+              TCP_PORT, // this is the application-level port you said (not underlying TCP)
+          'password': password,
+        };
+
+        try {
+          final String out = jsonEncode(gcResponse);
+          client.write(out);
+          await client.flush();
+          _log('[GC] Sent GC response: $gcResponse');
+        } catch (e) {
+          _log('❌Failed to send GC response: $e');
         }
-      } else {
-        _log('❌Invalid request received: $message');
+      }
+
+      // Unknown action
+      else {
+        _log('❌Unknown action received: $action');
       }
     } catch (e) {
-      _log('❌Malformed JSON received: $message — $e');
+      _log('❌Malformed JSON received or parse error: $message — $e');
     }
   }
 
   Future<void> stop() async {
-    await _serverSocket?.close();
-    _serverSocket = null;
-    _log('TCP Listener stopped');
+    if (!_running) return;
+    try {
+      await _serverSocket?.close();
+      _serverSocket = null;
+      _running = false;
+      _log('TCP Listener stopped');
+    } catch (e) {
+      _log('Error stopping TCP listener: $e');
+    }
   }
 
   void _log(String message) {
     log('[TCP Listener] $message');
+    if (kDebugMode) debugPrint('[TCP Listener] $message');
   }
 }

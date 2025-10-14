@@ -33,6 +33,7 @@ import 'mobile/pages/server_page.dart';
 import 'models/platform_model.dart';
 import 'package:flutter_hbb/network_monitor.dart';
 import 'package:flutter_hbb/models/server_model.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter_hbb/plugin/handlers.dart'
     if (dart.library.html) 'package:flutter_hbb/web/plugin/handlers.dart';
@@ -480,7 +481,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _tcpListener = TcpListener(
-      port: 64546, // Use a different port than UDP
+      port: 64546,
     );
     _tcpListener?.start();
     WidgetsBinding.instance.window.onPlatformBrightnessChanged = () {
@@ -598,93 +599,253 @@ Widget keyListenerBuilder(BuildContext context, Widget? child) {
   );
 }
 
+/// Starts and manages continuous UDP discovery for the Linux build.
+///
+/// - Broadcasts an "iam_alive" heartbeat every 10 seconds.
+/// - Listens continuously for both "anybody_alive" (requests) and "iam_alive" (responses).
+/// - Replies to "anybody_alive" with a unicast "iam_alive".
+/// - Maintains an in-memory map of discovered devices and prunes stale entries.
+/// - Uses reuseAddress/reusePort for stable binding and avoids flakiness when restarting.
+///
+/// Call `_stopUdpDiscovery()` to stop service and close sockets cleanly.
+RawDatagramSocket? _udpBroadcastSocket; // For sending iam_alive
+RawDatagramSocket?
+    _udpListenSocket; // For receiving anybody_alive and iam_alive
+Timer? _heartbeatTimer;
+Timer? _pruneTimer;
+final Map<String, Map<String, dynamic>> _discovered = {};
+final Duration _heartbeatInterval = Duration(seconds: 10);
+final Duration _staleTimeout = Duration(seconds: 20);
+final int UDP_BROADCAST_PORT = 64545;
+final int UDP_LISTEN_PORT = 64546;
+final int TCP_PORT = 12345; // Dedicated port for TCP connections (TC/GC)
+final String _broadcastAddress = '255.255.255.255';
+bool _discoveryRunning = false;
+
 Future<void> _startUdpDiscovery(
     String currentSessionId, String currentPassword, String deviceId) async {
-  RawDatagramSocket? udpSocket;
+  if (_discoveryRunning) {
+    debugPrint('[UDP] Discovery already running — skipping start.');
+    return;
+  }
+  _discoveryRunning = true;
+
+  // Bind UDP listen socket
+  debugPrint(
+      '[UDP] Attempting to bind UDP listen socket on 0.0.0.0:$UDP_LISTEN_PORT (reuse=true)');
   try {
-    udpSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 64545);
-    debugPrint('Initializing UDP socket on port 64545');
+    _udpListenSocket = await RawDatagramSocket.bind(
+      InternetAddress.anyIPv4,
+      UDP_LISTEN_PORT,
+      reuseAddress: true,
+      reusePort: Platform.isLinux, // Only use reusePort on Linux
+    );
+    _udpListenSocket?.broadcastEnabled = true;
+    debugPrint(
+        '[UDP] Bound listen socket to anyIPv4:$UDP_LISTEN_PORT (broadcast enabled)');
   } on SocketException catch (e) {
-    if (e.osError?.errorCode == 10013) {
+    debugPrint(
+        '[UDP] Listen socket bind failed: $e — trying loopback fallback');
+    try {
+      _udpListenSocket = await RawDatagramSocket.bind(
+        InternetAddress.loopbackIPv4,
+        UDP_LISTEN_PORT,
+        reuseAddress: true,
+        reusePort: Platform.isLinux, // Only use reusePort on Linux
+      );
+      _udpListenSocket?.broadcastEnabled = true;
       debugPrint(
-          'Permission denied to bind to UDP port 64545 on any IPv4 address. Attempting to bind to loopback address. Error: $e');
-      try {
-        udpSocket =
-            await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 64545);
-        debugPrint('Successfully bound to loopback address for UDP discovery.');
-      } on SocketException catch (loopbackE) {
-        debugPrint(
-            'Failed to bind to loopback address for UDP discovery. Error: $loopbackE');
-        return;
-      }
-    } else {
-      debugPrint('Error initializing UDP socket: $e');
+          '[UDP] Bound listen socket to loopback:$UDP_LISTEN_PORT as fallback');
+    } catch (loopbackE) {
+      debugPrint('[UDP] Loopback listen socket bind failed: $loopbackE');
+      _discoveryRunning = false;
       return;
     }
   } catch (e) {
-    debugPrint('Error initializing UDP socket: $e');
+    debugPrint('[UDP] Unexpected error binding listen socket: $e');
+    _discoveryRunning = false;
     return;
   }
+
+  if (_udpListenSocket == null) {
+    debugPrint('[UDP] Listen socket is null after bind attempts — aborting');
+    _discoveryRunning = false;
+    return;
+  }
+
+  // Bind UDP broadcast socket
+  debugPrint(
+      '[UDP] Attempting to bind UDP broadcast socket on 0.0.0.0:$UDP_BROADCAST_PORT (reuse=true)');
   try {
-    // Get device IP
-    final String? deviceIp = await _getDeviceIp();
-    if (deviceIp == null) {
-      debugPrint('Failed to get device IP for UDP discovery.');
+    _udpBroadcastSocket = await RawDatagramSocket.bind(
+      InternetAddress.anyIPv4,
+      UDP_BROADCAST_PORT,
+      reuseAddress: true,
+      reusePort: Platform.isLinux, // Only use reusePort on Linux
+    );
+    _udpBroadcastSocket?.broadcastEnabled = true;
+    debugPrint(
+        '[UDP] Bound broadcast socket to anyIPv4:$UDP_BROADCAST_PORT (broadcast enabled)');
+  } on SocketException catch (e) {
+    debugPrint(
+        '[UDP] Broadcast socket bind failed: $e — trying loopback fallback');
+    try {
+      _udpBroadcastSocket = await RawDatagramSocket.bind(
+        InternetAddress.loopbackIPv4,
+        UDP_BROADCAST_PORT,
+        reuseAddress: true,
+        reusePort: Platform.isLinux, // Only use reusePort on Linux
+      );
+      _udpBroadcastSocket?.broadcastEnabled = true;
+      debugPrint(
+          '[UDP] Bound broadcast socket to loopback:$UDP_BROADCAST_PORT as fallback');
+    } catch (loopbackE) {
+      debugPrint('[UDP] Loopback broadcast socket bind failed: $loopbackE');
+      _discoveryRunning = false;
       return;
     }
+  } catch (e) {
+    debugPrint('[UDP] Unexpected error binding broadcast socket: $e');
+    _discoveryRunning = false;
+    return;
+  }
 
-    final message = jsonEncode({
+  if (_udpBroadcastSocket == null) {
+    debugPrint('[UDP] Broadcast socket is null after bind attempts — aborting');
+    _discoveryRunning = false;
+    return;
+  }
+
+  // Gather the local non-loopback IPv4 to advertise in payload (if available).
+  final localIp = await _getDeviceIp();
+  if (localIp == null) {
+    debugPrint(
+        '[UDP] Warning: could not find non-loopback IPv4 address. If running inside WSL2, UDP broadcasts may not reach the LAN.');
+  } else {
+    debugPrint('[UDP] Local IPv4: $localIp');
+  }
+
+  // Compose the iam_alive payload generator
+  Map<String, dynamic> makeIamAlive() {
+    return {
       'type': 'iam_alive',
-      'ip': deviceIp,
-      'port': 64545, // Assuming the same port for control signaling
+      'ip': localIp ?? '0.0.0.0',
+      'port': UDP_LISTEN_PORT, // Advertise the listening port
       'session_id': currentSessionId,
       'password': currentPassword,
       'device_id': deviceId,
-    });
+      'ts': DateTime.now().toIso8601String(),
+    };
+  }
 
-    // Emit "I am alive" broadcast
-    udpSocket.broadcastEnabled = true;
-    udpSocket.send(
-        message.codeUnits, InternetAddress('255.255.255.255'), 64545);
-    debugPrint('🛜Emitting iam_alive message: $message');
+  // Listen continuously for datagrams on the listen socket
+  _udpListenSocket!.listen((RawSocketEvent event) {
+    if (event != RawSocketEvent.read) return;
+    try {
+      final Datagram? dg = _udpListenSocket!.receive();
+      if (dg == null) return;
+      final String remoteAddr = dg.address.address;
+      final int remotePort = dg.port;
+      final String raw = utf8.decode(dg.data);
+      debugPrint('[UDP Listener] Packet from $remoteAddr:$remotePort → $raw');
 
-    // Start listening for "anybody_alive" messages
-    udpSocket.listen((RawSocketEvent event) {
-      if (event == RawSocketEvent.read) {
-        Datagram? datagram = udpSocket?.receive();
-        if (datagram != null) {
-          final receivedMessage = utf8.decode(datagram.data);
-          try {
-            final Map<String, dynamic> parsedMessage =
-                jsonDecode(receivedMessage);
-            if (parsedMessage['type'] == 'anybody_alive') {
-              debugPrint(
-                  'Received anybody_alive from ${datagram.address.address}');
-              final responseMessage = jsonEncode({
-                'type': 'iam_alive',
-                'ip': deviceIp,
-                'port': 64545,
-                'session_id': currentSessionId,
-                'password': currentPassword,
-                'device_id': deviceId,
-              });
-              udpSocket?.send(
-                  responseMessage.codeUnits, datagram.address, datagram.port);
-              debugPrint('Response message sent: $responseMessage');
-            }
-          } catch (e) {
-            debugPrint('Error parsing UDP message: $e');
-          }
-        }
+      Map<String, dynamic> parsed;
+      try {
+        parsed = jsonDecode(raw) as Map<String, dynamic>;
+      } catch (e) {
+        debugPrint(
+            '[UDP Listener] Invalid JSON received from $remoteAddr:$remotePort: $e');
+        return;
       }
+
+      final String? type = parsed['type'] as String?;
+      if (type == 'anybody_alive') {
+        // Someone is asking "who's out there?" — reply with a unicast iam_alive
+        final response = makeIamAlive();
+        final String responseStr = jsonEncode(response);
+        // Change UDP_BROADCAST_PORT to dg.port to reply directly to the sender
+        _udpBroadcastSocket!.send(responseStr.codeUnits, dg.address, dg.port);
+        debugPrint(
+            '[UDP Listener] Replied to anybody_alive from $remoteAddr:${dg.port} with iam_alive');
+      } else if (type == 'iam_alive') {
+        // Update discovered devices map
+        final String devId = parsed['device_id']?.toString() ?? remoteAddr;
+        _discovered[devId] = {
+          'device_id': parsed['device_id'],
+          'ip': parsed['ip'] ?? remoteAddr,
+          'port': parsed['port'] ?? remotePort,
+          'session_id': parsed['session_id'],
+          'password': parsed['password'],
+          'name': parsed['name'],
+          'lastSeen': DateTime.now(),
+          'raw': parsed,
+        };
+        // You can publish this to your app state / UI as needed.
+        debugPrint(
+            '[UDP Listener] Updated discovered[$devId] with IP ${_discovered[devId]!['ip']}');
+      } else {
+        debugPrint('[UDP Listener] Ignored message with unknown type: $type');
+      }
+    } catch (e) {
+      debugPrint('[UDP Listener] Error processing incoming datagram: $e');
+    }
+  }, onError: (e) {
+    debugPrint('[UDP Listener] Socket listener error: $e');
+  });
+
+  // Heartbeat: broadcast iam_alive every _heartbeatInterval
+  _heartbeatTimer?.cancel();
+  _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) {
+    try {
+      final iam = makeIamAlive();
+      final str = jsonEncode(iam);
+      // Change UDP_BROADCAST_PORT to UDP_LISTEN_PORT
+      _udpBroadcastSocket!.send(
+          str.codeUnits, InternetAddress(_broadcastAddress), UDP_LISTEN_PORT);
+      debugPrint(
+          '[UDP Broadcaster] Broadcast iam_alive → $_broadcastAddress:$UDP_LISTEN_PORT');
+    } catch (e) {
+      debugPrint('[UDP] Heartbeat send error: $e');
+    }
+  });
+
+  // Prune stale entries periodically (every heartbeat interval)
+  _pruneTimer?.cancel();
+  _pruneTimer = Timer.periodic(_heartbeatInterval, (_) {
+    final now = DateTime.now();
+    final stale = <String>[];
+    _discovered.forEach((k, v) {
+      final DateTime last = v['lastSeen'] as DateTime;
+      if (now.difference(last) > _staleTimeout) stale.add(k);
     });
-    debugPrint('👂Listening for anybody_alive messages...');
+    for (final k in stale) {
+      _discovered.remove(k);
+      debugPrint('[UDP] Removed stale device: $k');
+    }
+  });
+
+  debugPrint('[UDP] Discovery service started (continuous).');
+}
+
+/// Stops the UDP discovery service and frees resources.
+/// Call this when your app is shutting down.
+Future<void> _stopUdpDiscovery() async {
+  _heartbeatTimer?.cancel();
+  _pruneTimer?.cancel();
+  try {
+    _udpBroadcastSocket?.close();
+    _udpListenSocket?.close();
   } catch (e) {
-    debugPrint('Error initializing UDP socket: $e');
-    udpSocket?.close();
+    debugPrint('[UDP] Error closing sockets: $e');
+  } finally {
+    _udpBroadcastSocket = null;
+    _udpListenSocket = null;
+    _discoveryRunning = false;
+    debugPrint('[UDP] Discovery stopped.');
   }
 }
 
+/// Returns the first non-loopback IPv4 address, or null if none found.
 Future<String?> _getDeviceIp() async {
   try {
     for (var interface in await NetworkInterface.list()) {
@@ -697,7 +858,13 @@ Future<String?> _getDeviceIp() async {
       }
     }
   } catch (e) {
-    debugPrint('Error getting device IP: $e');
+    debugPrint('[UDP] Error getting device IP: $e');
   }
   return null;
+}
+
+// Expose a helper so other parts of your code can query the discovered map:
+Map<String, Map<String, dynamic>> getDiscoveredDevicesSnapshot() {
+  // Returns a shallow copy
+  return Map<String, Map<String, dynamic>>.from(_discovered);
 }
