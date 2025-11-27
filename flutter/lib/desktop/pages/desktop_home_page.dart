@@ -763,8 +763,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       await gFFI.serverModel.fetchID();
-      await gFFI.serverModel
-          .updatePasswordModel(); // Ensure password is also updated
       final error = await bind.mainGetError();
       if (systemError != error) {
         systemError = error;
