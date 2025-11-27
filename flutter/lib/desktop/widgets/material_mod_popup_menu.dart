@@ -854,8 +854,8 @@ class _PopupMenuRoute<T> extends PopupRoute<T> {
       semanticLabel: semanticLabel,
       constraints: constraints,
     );
-    if (this.menuWrapper != null) {
-      menu = this.menuWrapper!(menu);
+    if (menuWrapper != null) {
+      menu = menuWrapper!(menu);
     }
     final MediaQueryData mediaQuery = MediaQuery.of(context);
     return MediaQuery.removePadding(

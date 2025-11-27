@@ -863,6 +863,13 @@ _connectDialog(
   if (passwordController != null) {
     rememberPassword =
         await bind.sessionGetRemember(sessionId: sessionId) ?? false;
+    final autoConnectPassword = dialogManager.getPasswordForAutoConnect();
+    if (autoConnectPassword != null && autoConnectPassword.isNotEmpty) {
+      passwordController.text = autoConnectPassword;
+      debugPrint('Password auto-filled for session $sessionId');
+      dialogManager
+          .setPasswordForAutoConnect(null); // Clear the password after use
+    }
   }
   var rememberAccount = false;
   if (canRememberAccount && osUsernameController != null) {

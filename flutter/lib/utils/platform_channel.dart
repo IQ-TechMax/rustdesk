@@ -13,8 +13,8 @@ class RdPlatformChannel {
 
   static RdPlatformChannel get instance => _windowUtil;
 
-  final MethodChannel _osxMethodChannel =
-      MethodChannel("org.rustdesk.rustdesk/macos");
+  final MethodChannel _platformMethodChannel =
+      MethodChannel("org.rustdesk.rustdesk/platform");
 
   /// Change the theme of the system window
   Future<void> changeSystemWindowTheme(SystemWindowTheme theme) {
@@ -23,13 +23,27 @@ class RdPlatformChannel {
       print(
           "[Window ${kWindowId ?? 'Main'}] change system window theme to ${theme.name}");
     }
-    return _osxMethodChannel
+    return _platformMethodChannel
         .invokeMethod("setWindowTheme", {"themeName": theme.name});
   }
 
   /// Terminate .app manually.
   Future<void> terminate() {
     assert(isMacOS);
-    return _osxMethodChannel.invokeMethod("terminate");
+    return _platformMethodChannel.invokeMethod("terminate");
+  }
+
+  Future<String?> getLocalIp() async {
+    if (isWindows) {
+      return await _platformMethodChannel.invokeMethod("getLocalIp");
+    }
+    return null;
+  }
+
+  Future<int?> getAvailablePort() async {
+    if (isWindows) {
+      return await _platformMethodChannel.invokeMethod("getAvailablePort");
+    }
+    return null;
   }
 }

@@ -769,6 +769,16 @@ class OverlayDialogManager {
   var _overlayKeyState = OverlayKeyState();
   int _tagCount = 0;
 
+  String? _autoConnectPassword;
+
+  void setPasswordForAutoConnect(String? password) {
+    _autoConnectPassword = password;
+  }
+
+  String? getPasswordForAutoConnect() {
+    return _autoConnectPassword;
+  }
+
   OverlayEntry? _mobileActionsOverlayEntry;
   RxBool mobileActionsOverlayVisible = true.obs;
 
@@ -3538,11 +3548,11 @@ Widget loadPowered(BuildContext context) {
 // max 300 x 60
 Widget loadLogo() {
   return FutureBuilder<ByteData>(
-      future: rootBundle.load('assets/logo.png'),
+      future: rootBundle.load('assets/xConnect-Icon.png'),
       builder: (BuildContext context, AsyncSnapshot<ByteData> snapshot) {
         if (snapshot.hasData) {
           final image = Image.asset(
-            'assets/logo.png',
+            'assets/xConnect-Icon.png',
             fit: BoxFit.contain,
             errorBuilder: (ctx, error, stackTrace) {
               return Container();
@@ -3558,11 +3568,11 @@ Widget loadLogo() {
 }
 
 Widget loadIcon(double size) {
-  return Image.asset('assets/icon.png',
+  return Image.asset('assets/xConnect-Icon.png',
       width: size,
       height: size,
       errorBuilder: (ctx, error, stackTrace) => SvgPicture.asset(
-            'assets/icon.svg',
+            'assets/xConnect-Icon.png',
             width: size,
             height: size,
           ));

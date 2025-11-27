@@ -46,6 +46,7 @@ dependencies:
   flutter_breadcrumb: ^1.0.1
   http: ^1.1.0
   qr_code_scanner: ^1.0.0
+  connectivity_plus: ^5.0.2
   zxing2: ^0.2.0
   image_picker: ^1.1.2
   image: ^4.0.17
@@ -125,14 +126,14 @@ dependency_overrides:
 
 # rerun: flutter pub run flutter_launcher_icons
 flutter_icons:
-  image_path: "../res/icon.png"
+  image_path: "assets/xConnect-Icon.png"
   remove_alpha_ios: true
   android: true
   ios: true
   windows:
     generate: true
   macos:
-    image_path: "../res/mac-icon.png"
+    image_path: "assets/xConnect-Icon.png"
     generate: true
   linux: true
   web:
