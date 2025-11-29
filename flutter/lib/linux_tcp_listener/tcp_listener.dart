@@ -8,8 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_hbb/main.dart'; // keep if connect() and globalKey are used
 import 'package:flutter_hbb/common.dart';
 
-// Use the TCP_PORT defined in main.dart
-// const int kGcResponsePort = 64546; // Port for GC response
+
 const int _tcpBindRetryCount = 3;
 const Duration _tcpBindRetryDelay = Duration(seconds: 1);
 
@@ -143,7 +142,7 @@ class TcpListener {
           'action': 'GC_RESPONSE',
           'ip': localIp.isNotEmpty ? localIp : '0.0.0.0',
           'port':
-              TCP_PORT, // this is the application-level port you said (not underlying TCP)
+              XCONNECT_PORT,
           'password': password,
         };
 
