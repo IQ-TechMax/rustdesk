@@ -188,9 +188,13 @@ void runMobileApp() async {
   if (isAndroid) platformFFI.syncAndroidServiceAppDirConfigPath();
   draggablePositions.load();
   await Future.wait([gFFI.abModel.loadCache(), gFFI.groupModel.loadCache()]);
+  gFFI.serverModel.startService();
   gFFI.userModel.refreshCurrentUser();
   runApp(App());
   await initUniLinks();
+  await gFFI.serverModel.fetchID();
+  await gFFI.serverModel.updatePasswordModel();
+  debugPrint('password is ${gFFI.serverModel.serverPasswd.text}');
 }
 
 void runMultiWindow(
@@ -522,7 +526,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           theme: MyTheme.lightTheme,
           darkTheme: MyTheme.darkTheme,
           themeMode: MyTheme.currentThemeMode(),
-home: _showSplash && (Platform.isWindows || Platform.isLinux)
+home: _showSplash
               ? Stack(
                   textDirection: TextDirection.ltr, // Added this line
                   children: [
@@ -571,9 +575,7 @@ home: _showSplash && (Platform.isWindows || Platform.isLinux)
                 )
               : (isDesktop
                   ? const DesktopTabPage()
-                  : isWeb
-                      ? WebHomePage()
-                      : HomePage()),
+                  : HomePage()),
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,

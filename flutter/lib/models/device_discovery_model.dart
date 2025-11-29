@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:get/get.dart';
+import 'package:flutter/services.dart';
 
 class Device {
   // IP and port are final because they define the device's identity/endpoint
@@ -71,15 +72,19 @@ class Device {
 }
 
 class DeviceDiscoveryController extends GetxController {
+  static const _nativeChannel = MethodChannel('mChannel');
+
   RxList<Device> discoveredDevices = <Device>[].obs;
   RxBool isLoading = false.obs;
   RxString statusText = 'Initializing...'.obs;
-  RawDatagramSocket? _broadcastSocket;
-  RawDatagramSocket? _listenSocket;
+
+  RawDatagramSocket? _broadcastSocket; // Only for sending UDP
+  ServerSocket? _tcpResponseServer;    // NEW: For receiving TCP responses
+  
   Timer? _broadcastTimer;
   Timer? _livenessTimer;
-  final int _udpBroadcastPort = 64545;
-  final int _udpListenPort = 64546;
+  
+  final int _sharedPort = 64546; // UDP Send Port AND TCP Listen Port
   final String _broadcastAddress = '255.255.255.255';
   final String _anybodyAliveMessage = '{"type": "anybody_alive"}';
 
@@ -87,52 +92,54 @@ class DeviceDiscoveryController extends GetxController {
   void onInit() {
     super.onInit();
     debugPrint('[UI] DeviceDiscoveryController initialized');
-    // Add a listener to update UI based on device discovery
+    
+    // Status listener
     discoveredDevices.listen((devices) {
       if (devices.isEmpty) {
-        if (!isLoading.value) {
-          statusText.value = 'No devices available';
-        }
+        if (!isLoading.value) statusText.value = 'No devices available';
       } else {
-        statusText.value = ''; // Clear status text when devices are found
-        isLoading.value = false; // Stop loading indicator
+        statusText.value = ''; 
+        isLoading.value = false;
       }
     });
-    _livenessTimer =
-        Timer.periodic(const Duration(seconds: 10), (_) => _checkDeviceLiveness());
+
+    _livenessTimer = Timer.periodic(const Duration(seconds: 10), (timer) => _checkDeviceLiveness());
   }
 
   void clearDevices() {
     discoveredDevices.clear();
-    debugPrint('[UI] Cleared previously found devices');
   }
 
   void refreshDiscovery() async {
-    debugPrint('[UDP] Manual refresh → restarting discovery');
     clearDevices();
     await startDiscovery();
-    debugPrint('[UI] Discovery started (manual refresh)');
   }
 
   Future<void> startDiscovery() async {
-    if (isLoading.value) {
-      debugPrint('[UI] Discovery already in progress, skipping new request.');
-      return;
-    }
-    debugPrint('[UI] Device discovery is loading');
+    if (isLoading.value) return;
     isLoading.value = true;
     statusText.value = 'Finding devices...';
     clearDevices();
-    await _startUdpDiscoveryWindows();
+    if (Platform.isAndroid) {
+      try {
+        await _nativeChannel.invokeMethod('acquire_multicast_lock');
+        debugPrint('[Android] Multicast lock acquired successfully.');
+      } catch (e) {
+        debugPrint('[Android] ❌ Failed to acquire multicast lock: $e');
+      }
+    }
+    await _startDiscoveryService();
   }
 
-  Future<void> _startUdpDiscoveryWindows() async {
-    debugPrint('[UDP] Discovery started');
-    await _initializeSockets();
-    _startBroadcasting();
-    // The listener will now handle status updates, so we can simplify this.
-    // We just need to handle the initial loading state.
-    Future.delayed(const Duration(seconds: 10), () {
+  Future<void> _startDiscoveryService() async {
+    // 1. Start TCP Server (To hear "I am alive" from Linux)
+    await _startTcpListener();
+
+    // 2. Start UDP Broadcast (To shout "Anybody out there?")
+    await _startUdpBroadcaster();
+
+    // 3. UI Timeout logic
+    Future.delayed(const Duration(seconds: 5), () {
       if (isLoading.value) {
         isLoading.value = false;
         if (discoveredDevices.isEmpty) {
@@ -142,138 +149,121 @@ class DeviceDiscoveryController extends GetxController {
     });
   }
 
-  Future<void> _initializeSockets() async {
-    if (_listenSocket == null) {
-      try {
-        _listenSocket = await RawDatagramSocket.bind(
-            InternetAddress.anyIPv4, _udpListenPort);
-        debugPrint(
-            '[UDP] Listening socket bound to anyIPv4:$_udpListenPort');
-        _listenForDevices(); // Attach listener only once
-      } catch (e) {
-        debugPrint(
-            '[UDP] Failed to bind listening socket to anyIPv4, trying loopback: $e');
-        try {
-          _listenSocket = await RawDatagramSocket.bind(
-              InternetAddress.loopbackIPv4, _udpListenPort);
-          debugPrint(
-              '[UDP] Listening socket bound to loopback:$_udpListenPort');
-          _listenForDevices(); // Attach listener only once
-        } catch (e) {
-          debugPrint('[UDP] Failed to bind listening socket: $e');
-          _updateStatusOnError('Failed to start listener.');
-          return;
-        }
-      }
-    }
+  // --- TCP LISTENER (Receives Responses) ---
+  Future<void> _startTcpListener() async {
+    if (_tcpResponseServer != null) return; // Already running
 
-    if (_broadcastSocket == null) {
-  try {
-    // Bind explicitly to your broadcast port
-    _broadcastSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, _udpBroadcastPort);
-    _broadcastSocket?.broadcastEnabled = true;
-    debugPrint('[UDP] Broadcast socket created and bound to port $_udpBroadcastPort');
-  } catch (e) {
-    debugPrint('[UDP] Failed to create broadcast socket on $_udpBroadcastPort: $e, falling back to port 0');
-    // Keep fallback in case the port is busy
-    _broadcastSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-    _broadcastSocket?.broadcastEnabled = true;
-  }
-}
-  }
-
-  void _startBroadcasting() {
-  _broadcastTimer?.cancel();
-  _broadcastTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-    // Change _udpBroadcastPort to _udpListenPort
-    debugPrint( '[UDP] 🛰️ Broadcasting anybody_alive to $_broadcastAddress:$_udpListenPort');
-    _broadcastSocket?.send(
-      utf8.encode(_anybodyAliveMessage),
-      InternetAddress(_broadcastAddress),
-      _udpListenPort,
-    );
-  });
-  // Initial broadcast
-  // Change _udpBroadcastPort to _udpListenPort
-  debugPrint( '[UDP] 🛰️ Broadcasting anybody_alive to $_broadcastAddress:$_udpListenPort');
-  _broadcastSocket?.send(
-    utf8.encode(_anybodyAliveMessage),
-    InternetAddress(_broadcastAddress),
-    _udpListenPort,
-  );
-}
-
-  void _listenForDevices() {
-    debugPrint('[UDP] 👂 Listening for iam_alive responses on port $_udpListenPort...');
-    _listenSocket?.listen((RawSocketEvent event) {
-      if (event == RawSocketEvent.read) {
-        Datagram? datagram = _listenSocket?.receive();
-        if (datagram != null) {
+    try {
+      // Listen on the SHARED PORT via TCP
+      _tcpResponseServer = await ServerSocket.bind(InternetAddress.anyIPv4, _sharedPort, shared: true);
+      debugPrint('[TCP] 👂 Server listening for devices on port $_sharedPort');
+      
+      _tcpResponseServer!.listen((Socket client) {
+        client.listen((Uint8List data) {
           try {
-            final String receivedMessage = utf8.decode(datagram.data);
-            final Map<String, dynamic> json = jsonDecode(receivedMessage);
+            final String msg = utf8.decode(data);
+            final Map<String, dynamic> json = jsonDecode(msg);
 
+            // Handle the response
             if (json['type'] == 'iam_alive') {
-              final deviceId = json['device_id'];
-              final existingDeviceIndex = discoveredDevices
-                  .indexWhere((d) => d.deviceId == deviceId);
-
-              if (existingDeviceIndex != -1) {
-                // Device already exists, update it
-                discoveredDevices[existingDeviceIndex] = Device.fromJson(
-                    json, datagram.address.address, 12345); 
-
-                debugPrint('[UDP] Received iam_alive from existing device with ip address = ${datagram.address.address} and password = ${json['password']}');
-                // Optional: refresh the list to notify listeners of the change
-                discoveredDevices.refresh();
-                
-              } else {
-                // New device, add it to the list
-                debugPrint(
-                    '[UDP] Received iam_alive from ${datagram.address.address}:${datagram.port} with password = ${json['password']}');
-                final newDevice = Device.fromJson(
-                    json, datagram.address.address, 12345); // Use TCP port
-                discoveredDevices.add(newDevice);
-                debugPrint(
-                    '[UI] Device discovered → {ip: ${newDevice.ip}, device_id: ${newDevice.deviceId}}');
-              }
+              _handleIamAlive(json, client.remoteAddress.address);
             }
           } catch (e) {
-            debugPrint('[UDP] Error processing received data: $e');
+            debugPrint('[TCP] Error parsing data from ${client.remoteAddress.address}: $e');
+          } finally {
+            client.destroy(); // Close connection after reading
           }
-        }
-      }
+        });
+      });
+    } catch (e) {
+      debugPrint('[TCP] ❌ Failed to bind server: $e');
+      _updateStatusOnError('Port $_sharedPort busy');
+    }
+  }
+
+  void _handleIamAlive(Map<String, dynamic> json, String remoteIp) {
+    final deviceId = json['device_id'];
+    // Linux might send 0.0.0.0, so we use the actual TCP socket address
+    final deviceIp = (json['ip'] == '0.0.0.0' || json['ip'] == null) ? remoteIp : json['ip'];
+    
+    final existingIndex = discoveredDevices.indexWhere((d) => d.deviceId == deviceId);
+
+    if (existingIndex != -1) {
+      // Update existing
+      discoveredDevices[existingIndex].updateFromJson(json);
+      discoveredDevices.refresh(); // Trigger UI update
+      debugPrint('[Discovery] Updated device: $deviceIp');
+    } else {
+      // Add new
+      final newDevice = Device.fromJson(json, deviceIp, 12345); // Port 12345 is standard, or read from json['port']
+      discoveredDevices.add(newDevice);
+      debugPrint('[Discovery] Found new device: $deviceIp ($deviceId)');
+    }
+  }
+
+  // --- UDP BROADCASTER (Sends Requests) ---
+  Future<void> _startUdpBroadcaster() async {
+    if (_broadcastSocket != null) return;
+
+    try {
+      _broadcastSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      _broadcastSocket?.broadcastEnabled = true;
+      debugPrint('[UDP] Broadcast socket ready.');
+    } catch (e) {
+      debugPrint('[UDP] Failed to create broadcast socket: $e');
+      return;
+    }
+
+    _broadcastTimer?.cancel();
+    _broadcastTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _sendBroadcast();
     });
+    _sendBroadcast(); // Send immediately
+  }
+
+  void _sendBroadcast() {
+    if (_broadcastSocket == null) return;
+    try {
+      debugPrint('[UDP] 🛰️ Sending "anybody_alive" to $_broadcastAddress:$_sharedPort');
+      _broadcastSocket?.send(
+        utf8.encode(_anybodyAliveMessage),
+        InternetAddress(_broadcastAddress),
+        _sharedPort, // Destination Port (Linux is listening here)
+      );
+    } catch (e) {
+      debugPrint('[UDP] Send error: $e');
+    }
   }
 
   void _checkDeviceLiveness() {
     final now = DateTime.now();
     discoveredDevices.removeWhere((device) {
-      final isStale = now.difference(device.lastSeen.value).inSeconds > 30;
-      if (isStale) {
-        debugPrint(
-            '[UI] Removing stale device → {ip: ${device.ip}, device_id: ${device.deviceId}}');
-      }
-      return isStale;
+      // If we haven't seen them in 30 seconds, remove them
+      return now.difference(device.lastSeen.value).inSeconds > 30;
     });
   }
 
   void _updateStatusOnError(String message) {
     isLoading.value = false;
     statusText.value = 'Error: $message';
-    debugPrint('[UI] Discovery error: $message');
-    _broadcastSocket?.close();
-    _listenSocket?.close();
-    _broadcastTimer?.cancel();
   }
 
   @override
   void onClose() {
+    // Release the lock when the controller is closed
+    if (Platform.isAndroid) {
+      try {
+        _nativeChannel.invokeMethod('release_multicast_lock');
+        debugPrint('[Android] Multicast lock released.');
+      } catch (e) {
+        debugPrint('[Android] ❌ Failed to release multicast lock: $e');
+      }
+    }
+
     _broadcastTimer?.cancel();
     _livenessTimer?.cancel();
     _broadcastSocket?.close();
-    _listenSocket?.close();
-    debugPrint('[UI] DeviceDiscoveryController closed');
+    _tcpResponseServer?.close(); // Close TCP Listener
     super.onClose();
   }
 }
