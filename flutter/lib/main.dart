@@ -153,6 +153,10 @@ void runMainApp(bool startService) async {
         bind.mainGetBuildinOption(key: "main-window-always-on-top") == 'Y';
   }
 
+  await gFFI.serverModel.fetchID();
+  await gFFI.serverModel.updatePasswordModel();
+  debugPrint('password is ${gFFI.serverModel.serverPasswd.text}');
+
   // Set window option.
   WindowOptions windowOptions = getHiddenTitleBarWindowOptions(
       isMainWindow: true, alwaysOnTop: alwaysOnTop);
@@ -184,9 +188,13 @@ void runMobileApp() async {
   if (isAndroid) platformFFI.syncAndroidServiceAppDirConfigPath();
   draggablePositions.load();
   await Future.wait([gFFI.abModel.loadCache(), gFFI.groupModel.loadCache()]);
+  gFFI.serverModel.startService();
   gFFI.userModel.refreshCurrentUser();
   runApp(App());
   await initUniLinks();
+  await gFFI.serverModel.fetchID();
+  await gFFI.serverModel.updatePasswordModel();
+  debugPrint('password is ${gFFI.serverModel.serverPasswd.text}');
 }
 
 void runMultiWindow(
@@ -428,9 +436,22 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> with WidgetsBindingObserver {
+  bool _showSplash = true;
+
   @override
   void initState() {
     super.initState();
+        if (Platform.isWindows || Platform.isLinux) {
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            _showSplash = false;
+          });
+        }
+      });
+    } else {
+      _showSplash = false; // No splash screen for non-Windows platforms
+    }
     WidgetsBinding.instance.window.onPlatformBrightnessChanged = () {
       final userPreference = MyTheme.getThemeModePreference();
       if (userPreference != ThemeMode.system) return;
@@ -505,11 +526,56 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           theme: MyTheme.lightTheme,
           darkTheme: MyTheme.darkTheme,
           themeMode: MyTheme.currentThemeMode(),
-          home: isDesktop
-              ? const DesktopTabPage()
-              : isWeb
-                  ? WebHomePage()
-                  : HomePage(),
+home: _showSplash
+              ? Stack(
+                  textDirection: TextDirection.ltr, // Added this line
+                  children: [
+                    // Layer 1: Background image (only on desktop)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage('assets/XconnectBackground.jpg'),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Layer 2: Splash screen elements (only on desktop)
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            child: Image.asset(
+                              'assets/xConnect-Logo.png',
+                              width: 250,
+                              height: 75,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 150,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                minHeight: 8.0,
+                                backgroundColor: Colors.white.withOpacity(0.3),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.blue.shade600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              : (isDesktop
+                  ? const DesktopTabPage()
+                  : HomePage()),
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,

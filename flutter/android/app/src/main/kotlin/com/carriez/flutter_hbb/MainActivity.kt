@@ -26,6 +26,8 @@ import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.util.DisplayMetrics
 import androidx.annotation.RequiresApi
+// This is the required import for the multicast lock
+import android.net.wifi.WifiManager
 import org.json.JSONArray
 import org.json.JSONObject
 import com.hjq.permissions.XXPermissions
@@ -46,6 +48,10 @@ class MainActivity : FlutterActivity() {
     private val channelTag = "mChannel"
     private val logTag = "mMainActivity"
     private var mainService: MainService? = null
+
+    // --- The MulticastLock property ---
+    private var multicastLock: WifiManager.MulticastLock? = null
+    // ----------------------------------
 
     private var isAudioStart = false
     private val audioRecordHandle = AudioRecordHandle(this, { false }, { isAudioStart })
@@ -103,6 +109,10 @@ class MainActivity : FlutterActivity() {
         mainService?.let {
             unbindService(serviceConnection)
         }
+
+        // --- Release the lock to save battery ---
+        releaseMulticastLock()
+        // ----------------------------------------
         super.onDestroy()
     }
 
@@ -123,6 +133,17 @@ class MainActivity : FlutterActivity() {
         flutterMethodChannel.setMethodCallHandler { call, result ->
             // make sure result will be invoked, otherwise flutter will await forever
             when (call.method) {
+                // --- The handlers for the multicast lock ---
+                "acquire_multicast_lock" -> {
+                    acquireMulticastLock()
+                    result.success(null)
+                }
+                "release_multicast_lock" -> {
+                    releaseMulticastLock()
+                    result.success(null)
+                }
+                // -------------------------------------------
+
                 "init_service" -> {
                     Intent(activity, MainService::class.java).also {
                         bindService(it, serviceConnection, Context.BIND_AUTO_CREATE)
@@ -218,7 +239,6 @@ class MainActivity : FlutterActivity() {
                         window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
                     }
                     result.success(true)
-
                 }
                 "try_sync_clipboard" -> {
                     rdClipboardManager?.syncClipboard(true)
@@ -274,6 +294,25 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    // --- The new methods to manage the lock ---
+    private fun acquireMulticastLock() {
+        if (multicastLock == null) {
+            val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager?
+            wifi?.let {
+                multicastLock = it.createMulticastLock("rustdesk_discovery_lock")
+                multicastLock?.setReferenceCounted(true)
+            }
+        }
+        multicastLock?.takeIf { !it.isHeld }?.acquire()
+        Log.d(logTag, "Multicast lock acquired.")
+    }
+
+    private fun releaseMulticastLock() {
+        multicastLock?.takeIf { it.isHeld }?.release()
+        Log.d(logTag, "Multicast lock released.")
+    }
+    // ------------------------------------------
+
     private fun setCodecInfo() {
         val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
         val codecs = codecList.codecInfos
@@ -286,6 +325,7 @@ class MainActivity : FlutterActivity() {
         val align = 64
         w = (w + align - 1) / align * align
         h = (h + align - 1) / align * align
+
         codecs.forEach { codec ->
             val codecObject = JSONObject()
             codecObject.put("name", codec.name)
