@@ -67,10 +67,8 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
       };
     }
     // Trigger discovery after splash screen (assuming this is the main entry point after splash)
-    Future.delayed(Duration(seconds: 5), () {
-      debugPrint('[UI] Splash completed, starting device discovery');
-      Get.find<DeviceDiscoveryController>().startDiscovery();
-    });
+    debugPrint('[UI] Splash completed, starting device discovery');
+    Get.find<DeviceDiscoveryController>().startDiscovery();
   }
 
   @override

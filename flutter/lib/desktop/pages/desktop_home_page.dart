@@ -1357,27 +1357,7 @@ class DeviceCard extends StatelessWidget {
                       const SizedBox(
                           width: 10), // Spacing between status and buttons
                       TextButton(
-                        onPressed: () async {
-                          debugPrint(
-                              '[UI] GC button clicked for ${device.schoolName}');
-                          device.tcpStatus.value = 'Sending info...';
-
-                          // Prepare payload if needed (can add extra info later)
-                          final gcPayload = {"action": "GC_REQUEST"};
-
-                          // Send TCP message
-                          await TcpHelper.sendTcpRequest(
-                            ip: device.ip,
-                            port: 12345, // Use dedicated TCP port
-                            requestPayload: gcPayload,
-                            tag: 'GC',
-                          );
-
-                          // Update UI status
-                          device.tcpStatus.value = 'Info sent';
-                          debugPrint(
-                              '[GC][Windows] GC info sent to ${device.ip}:${device.port}');
-                        },
+                        onPressed: () => _handleGcButtonClick(device),
                         style: TextButton.styleFrom(
                           padding:
                               EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1459,7 +1439,7 @@ Future<void> _handleTcButtonClick(Device device) async {
   // Send TCP request (no response expected for TC)
   await TcpHelper.sendTcpRequest(
     ip: device.ip,
-    port: 12345, // Use dedicated TCP port
+    port: 64546, // Use dedicated TCP port
     requestPayload: tcPayload,
     tag: 'TC',
   );
@@ -1474,7 +1454,7 @@ Future<void> _handleGcButtonClick(Device device) async {
 
   final response = await TcpHelper.sendTcpRequest(
     ip: device.ip,
-    port: 12345, // Use dedicated TCP port
+    port: 64546, // Use dedicated TCP port
     requestPayload: {"action": "GC_REQUEST"},
     tag: 'GC',
   );
