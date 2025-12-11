@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart';
 
 class Device {
   // IP and port are final because they define the device's identity/endpoint
@@ -64,11 +65,10 @@ class Device {
     // No changes needed here, but note that this getter is not reactive by itself.
     // The UI will update because it depends on deviceId, which IS reactive.
     if (deviceId.value != null && deviceId.value!.length > 6) {
-      return 'Device ID: ${deviceId.value!.substring(deviceId.value!.length - 6)}';
+      return deviceId.value!.substring(0, deviceId.value!.length);
     }
     return deviceId.value ?? name.value ?? ip;
   }
-  
 }
 
 class DeviceDiscoveryController extends GetxController {
@@ -79,11 +79,11 @@ class DeviceDiscoveryController extends GetxController {
   RxString statusText = 'Initializing...'.obs;
 
   RawDatagramSocket? _broadcastSocket; // Only for sending UDP
-  ServerSocket? _tcpResponseServer;    // NEW: For receiving TCP responses
-  
+  StreamSubscription? _messageSubscription;
+
   Timer? _broadcastTimer;
   Timer? _livenessTimer;
-  
+
   final int _sharedPort = 64546; // UDP Send Port AND TCP Listen Port
   final String _broadcastAddress = '255.255.255.255';
   final String _anybodyAliveMessage = '{"type": "anybody_alive"}';
@@ -92,18 +92,26 @@ class DeviceDiscoveryController extends GetxController {
   void onInit() {
     super.onInit();
     debugPrint('[UI] DeviceDiscoveryController initialized');
-    
+
+    _messageSubscription =
+        XConnectTcpManager.to.messageStream.listen((message) {
+      if (message['type'] == 'iam_alive') {
+        _handleIamAlive(message, message['remoteIp']);
+      }
+    });
+
     // Status listener
     discoveredDevices.listen((devices) {
       if (devices.isEmpty) {
         if (!isLoading.value) statusText.value = 'No devices available';
       } else {
-        statusText.value = ''; 
+        statusText.value = '';
         isLoading.value = false;
       }
     });
 
-    _livenessTimer = Timer.periodic(const Duration(seconds: 10), (timer) => _checkDeviceLiveness());
+    _livenessTimer = Timer.periodic(
+        const Duration(seconds: 10), (timer) => _checkDeviceLiveness());
   }
 
   void clearDevices() {
@@ -132,13 +140,10 @@ class DeviceDiscoveryController extends GetxController {
   }
 
   Future<void> _startDiscoveryService() async {
-    // 1. Start TCP Server (To hear "I am alive" from Linux)
-    await _startTcpListener();
-
-    // 2. Start UDP Broadcast (To shout "Anybody out there?")
+    // 1. Start UDP Broadcast (To shout "Anybody out there?")
     await _startUdpBroadcaster();
 
-    // 3. UI Timeout logic
+    // 2. UI Timeout logic
     Future.delayed(const Duration(seconds: 5), () {
       if (isLoading.value) {
         isLoading.value = false;
@@ -149,44 +154,14 @@ class DeviceDiscoveryController extends GetxController {
     });
   }
 
-  // --- TCP LISTENER (Receives Responses) ---
-  Future<void> _startTcpListener() async {
-    if (_tcpResponseServer != null) return; // Already running
-
-    try {
-      // Listen on the SHARED PORT via TCP
-      _tcpResponseServer = await ServerSocket.bind(InternetAddress.anyIPv4, _sharedPort, shared: true);
-      debugPrint('[TCP] 👂 Server listening for devices on port $_sharedPort');
-      
-      _tcpResponseServer!.listen((Socket client) {
-        client.listen((Uint8List data) {
-          try {
-            final String msg = utf8.decode(data);
-            final Map<String, dynamic> json = jsonDecode(msg);
-
-            // Handle the response
-            if (json['type'] == 'iam_alive') {
-              _handleIamAlive(json, client.remoteAddress.address);
-            }
-          } catch (e) {
-            debugPrint('[TCP] Error parsing data from ${client.remoteAddress.address}: $e');
-          } finally {
-            client.destroy(); // Close connection after reading
-          }
-        });
-      });
-    } catch (e) {
-      debugPrint('[TCP] ❌ Failed to bind server: $e');
-      _updateStatusOnError('Port $_sharedPort busy');
-    }
-  }
-
   void _handleIamAlive(Map<String, dynamic> json, String remoteIp) {
     final deviceId = json['device_id'];
     // Linux might send 0.0.0.0, so we use the actual TCP socket address
-    final deviceIp = (json['ip'] == '0.0.0.0' || json['ip'] == null) ? remoteIp : json['ip'];
-    
-    final existingIndex = discoveredDevices.indexWhere((d) => d.deviceId == deviceId);
+    final deviceIp =
+        (json['ip'] == '0.0.0.0' || json['ip'] == null) ? remoteIp : json['ip'];
+
+    final existingIndex =
+        discoveredDevices.indexWhere((d) => d.deviceId == deviceId);
 
     if (existingIndex != -1) {
       // Update existing
@@ -195,7 +170,8 @@ class DeviceDiscoveryController extends GetxController {
       debugPrint('[Discovery] Updated device: $deviceIp');
     } else {
       // Add new
-      final newDevice = Device.fromJson(json, deviceIp, 12345); // Port 12345 is standard, or read from json['port']
+      final newDevice = Device.fromJson(json, deviceIp,
+          12345); // Port 12345 is standard, or read from json['port']
       discoveredDevices.add(newDevice);
       debugPrint('[Discovery] Found new device: $deviceIp ($deviceId)');
     }
@@ -206,7 +182,8 @@ class DeviceDiscoveryController extends GetxController {
     if (_broadcastSocket != null) return;
 
     try {
-      _broadcastSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      _broadcastSocket =
+          await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       _broadcastSocket?.broadcastEnabled = true;
       debugPrint('[UDP] Broadcast socket ready.');
     } catch (e) {
@@ -224,7 +201,8 @@ class DeviceDiscoveryController extends GetxController {
   void _sendBroadcast() {
     if (_broadcastSocket == null) return;
     try {
-      debugPrint('[UDP] 🛰️ Sending "anybody_alive" to $_broadcastAddress:$_sharedPort');
+      debugPrint(
+          '[UDP] 🛰️ Sending "anybody_alive" to $_broadcastAddress:$_sharedPort');
       _broadcastSocket?.send(
         utf8.encode(_anybodyAliveMessage),
         InternetAddress(_broadcastAddress),
@@ -260,10 +238,10 @@ class DeviceDiscoveryController extends GetxController {
       }
     }
 
+    _messageSubscription?.cancel();
     _broadcastTimer?.cancel();
     _livenessTimer?.cancel();
     _broadcastSocket?.close();
-    _tcpResponseServer?.close(); // Close TCP Listener
     super.onClose();
   }
 }

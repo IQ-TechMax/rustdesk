@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/foundation.dart'; // For debugPrint
-import 'package:flutter_hbb/utils/tcp_helpers.dart';
+import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
@@ -72,7 +72,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   bool isCardClosed = false;
 
   late final DeviceDiscoveryController _deviceDiscoveryController =
-    Get.put(DeviceDiscoveryController());
+      Get.put(DeviceDiscoveryController());
 
   final RxBool _editHover = false.obs;
   final RxBool _block = false.obs;
@@ -84,11 +84,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.build(context);
     final isIncomingOnly = bind.isIncomingOnly();
     return _buildBlock(
-      child: (Platform.isWindows || Platform.isLinux)
+        child: (Platform.isWindows || Platform.isLinux)
             ? Container(
                 decoration: BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage('assets/XconnectBackground.jpg'),
+                    image: AssetImage('assets/XconnectBackground.png'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -205,9 +205,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                                   _deviceDiscoveryController
                                                       .discoveredDevices
                                                       .map((device) {
-                                                final String schoolName = "Device ID : ${device.schoolName}";
-                                                const statusColor =
-                                                    Colors.green;
+                                                final String schoolName =
+                                                    device.schoolName;
                                                 debugPrint(
                                                     "UI: Rendering device: $schoolName, online: true");
                                                 return DeviceCard(
@@ -1437,11 +1436,9 @@ Future<void> _handleTcButtonClick(Device device) async {
       '[TC][Windows] Sending TC info to ${device.ip}:${device.port}: $tcPayload');
 
   // Send TCP request (no response expected for TC)
-  await TcpHelper.sendTcpRequest(
-    ip: device.ip,
-    port: 64546, // Use dedicated TCP port
-    requestPayload: tcPayload,
-    tag: 'TC',
+  await XConnectTcpManager.to.sendRequest(
+    device.ip,
+    tcPayload,
   );
 
   device.tcpStatus.value = 'Info sent';
@@ -1452,11 +1449,9 @@ Future<void> _handleGcButtonClick(Device device) async {
   debugPrint('[UI] GC button clicked for ${device.schoolName}');
   device.tcpStatus.value = 'Requesting...';
 
-  final response = await TcpHelper.sendTcpRequest(
-    ip: device.ip,
-    port: 64546, // Use dedicated TCP port
-    requestPayload: {"action": "GC_REQUEST"},
-    tag: 'GC',
+  final response = await XConnectTcpManager.to.sendRequest(
+    device.ip,
+    {"action": "GC_REQUEST"},
   );
 
   if (response != null && response['ack'] == 'GC_ACK') {

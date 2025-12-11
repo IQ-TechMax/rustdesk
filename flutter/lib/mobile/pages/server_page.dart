@@ -886,6 +886,7 @@ void androidChannelInit() {
         case "on_media_projection_canceled":
           {
             gFFI.serverModel.stopService();
+            SystemNavigator.pop();
             break;
           }
         case "msgbox":

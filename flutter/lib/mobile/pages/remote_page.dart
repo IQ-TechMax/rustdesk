@@ -45,13 +45,17 @@ class RemotePage extends StatefulWidget {
       required this.id,
       this.password,
       this.isSharedPassword,
-      this.forceRelay})
+      this.forceRelay,
+      this.isViewOnly = false,
+      this.isBlankScreen = false})
       : super(key: key);
 
   final String id;
   final String? password;
   final bool? isSharedPassword;
   final bool? forceRelay;
+  final bool isViewOnly;
+  final bool isBlankScreen;
 
   @override
   State<RemotePage> createState() => _RemotePageState(id);
@@ -97,6 +101,31 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       isSharedPassword: widget.isSharedPassword,
       forceRelay: widget.forceRelay,
     );
+    // lets keep these comments for mouse mode enablement reference
+    // if (widget.isViewOnly) {
+    //   // Configure for xCtrlView
+    //   debugPrint(
+    //       '[RemotePage] xCtrlView mode detected. Setting input to Touch Mode.');
+    //   if (!gFFI.ffiModel.touchMode) {
+    //     gFFI.ffiModel.toggleTouchMode();
+    //     final v = gFFI.ffiModel.touchMode ? 'Y' : '';
+    //     bind.sessionPeerOption(
+    //         sessionId: sessionId, name: kOptionTouchMode, value: v);
+    //   }
+    // } else if (widget.isBlankScreen) {
+    //   // Configure for xCtrl (blank screen)
+    //   debugPrint(
+    //       '[RemotePage] xCtrl (blank screen) mode detected. Defaulting to Mouse Mode.');
+    //   // MouseMode is the default, so we just ensure it's not touch.
+    //   if (gFFI.ffiModel.touchMode) {
+    //     gFFI.ffiModel.toggleTouchMode();
+    //     final v = gFFI.ffiModel.touchMode ? 'Y' : '';
+    //     bind.sessionPeerOption(
+    //         sessionId: sessionId, name: kOptionTouchMode, value: v);
+    //   }
+    // }
+    openKeyboard();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
       gFFI.dialogManager
@@ -434,9 +463,10 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                               return Container(
                                 color: MyTheme.canvasColor,
                                 child: inputModel.isPhysicalMouse.value
-                                    ? getBodyForMobile()
+                                    ? getBodyForMobile(widget.isBlankScreen)
                                     : RawTouchGestureDetectorRegion(
-                                        child: getBodyForMobile(),
+                                        child: getBodyForMobile(
+                                            widget.isBlankScreen),
                                         ffi: gFFI,
                                       ),
                               );
@@ -568,13 +598,12 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   bool get showCursorPaint =>
       !gFFI.ffiModel.isPeerAndroid && !gFFI.canvasModel.cursorEmbedded;
 
-  Widget getBodyForMobile() {
+  Widget getBodyForMobile(bool isBlankScreen) {
     final keyboardIsVisible = keyboardVisibilityController.isVisible;
     return Container(
         color: MyTheme.canvasColor,
         child: Stack(children: () {
           final paints = [
-            ImagePaint(),
             Positioned(
               top: 10,
               right: 10,
@@ -614,6 +643,10 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                     ).workaroundFreezeLinuxMint(),
             ),
           ];
+
+          if (!isBlankScreen) {
+            paints.add(ImagePaint());
+          }
           if (showCursorPaint) {
             paints.add(CursorPaint(widget.id));
           }
