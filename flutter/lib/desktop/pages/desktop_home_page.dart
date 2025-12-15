@@ -61,6 +61,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final isIncomingOnly = bind.isIncomingOnly();
     final isDesktop = Platform.isWindows || Platform.isLinux;
 
+    final RxBool isLoaded = RxBool(false);
+
+    Future.delayed(Duration(milliseconds: 5000), () {
+      isLoaded.value = true;
+    });
+
     return Stack(
       children: [
         // Layer 1: Background image (only on desktop)
@@ -108,30 +114,41 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     height: 75,
                   ),
                 ),
-                SizedBox(
-                  width: 150, // Adjust width as needed for your design
-                  child: ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(10), // Radius for rounded edges
-                    child: LinearProgressIndicator(
-                      minHeight: 8.0, // Height of the progress bar
-                      backgroundColor: Colors.white.withOpacity(0.3),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.blue.shade600,
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.only(top: 10), // 5px top margin
-                  child: Text(
-                    "Waiting for connection",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
+                Obx(() {
+
+                  if (isLoaded.isTrue) {
+                    return Container(); // Hide progress bar and text when loaded
+                  } else {
+                    return Column(
+                      children: [
+                        SizedBox(
+                          width: 150, // Adjust width as needed for your design
+                          child: ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(10), // Radius for rounded edges
+                            child: LinearProgressIndicator(
+                              minHeight: 8.0, // Height of the progress bar
+                              backgroundColor: Colors.white.withOpacity(0.3),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.blue.shade600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.only(top: 10), // 5px top margin
+                          child: Text(
+                            "Loading...",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                }),
               ],
             ),
           ),

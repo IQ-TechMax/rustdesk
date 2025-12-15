@@ -7,6 +7,7 @@ import 'dart:developer';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_hbb/main.dart'; // keep if connect() and globalKey are used
 import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/models/state_model.dart';
 
 
 const int _tcpBindRetryCount = 3;
@@ -106,6 +107,7 @@ class TcpListener {
             try {
               connect(globalKey.currentContext!, '$ip:$port',
                   password: password, isAutoConnect: true);
+              stateGlobal.setFullscreen(true);
               _log('[TC] Auto connect triggered to $ip:$port');
             } catch (e) {
               _log('[TC] Auto connect error: $e');
@@ -144,6 +146,7 @@ class TcpListener {
           'port':
               XCONNECT_PORT,
           'password': password,
+          'transaction_id': jsonMsg['transaction_id']
         };
 
         try {

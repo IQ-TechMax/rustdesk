@@ -2793,3 +2793,14 @@ pub mod server_side {
         jboolean::from(crate::server::is_clipboard_service_ok())
     }
 }
+
+pub fn get_x_connect_device_name() -> String {
+    let config = hbb_common::config::Config::load();
+    config.x_connect_device_name.clone()
+}
+
+pub fn set_x_connect_device_name(value: String) {
+    let mut config = hbb_common::config::Config::load();
+    config.x_connect_device_name = value;
+    hbb_common::config::Config::store(&config);
+}

@@ -189,7 +189,85 @@ void runMainApp(bool startService) async {
     }
   }
 
-  final String deviceId = await getDeviceId();
+  /// Finds the MAC address of the best available network interface 
+  /// based on the following priority:
+  /// 1. wlp2s0
+  /// 2. Any interface starting with 'wlp' (Wireless)
+  /// 3. Any interface starting with 'enp' (Modern Ethernet)
+  /// 4. Any interface starting with 'eth' (Legacy Ethernet)
+  ///
+  /// Returns the MAC address as a String without colons (e.g., "aabbccddeeff").
+  /// Returns null if no matching interface is found or on error.
+  Future<String> getMacAddressId() async {
+    try {
+      final netDir = Directory('/sys/class/net');
+      
+      // Check if the directory exists (ensures we are likely on Linux)
+      if (!await netDir.exists()) {
+        return '';
+      }
+  
+      // Get a list of all interface names currently on the system
+      final List<FileSystemEntity> entities = await netDir.list().toList();
+      final List<String> interfaces = entities
+          .map((e) => e.uri.pathSegments.where((s) => s.isNotEmpty).last)
+          .toList();
+  
+      String? targetInterface;
+  
+      // --- Priority Logic ---
+      
+      // Priority 1: Exact match for 'wlp2s0'
+      if (interfaces.contains('wlp2s0')) {
+        targetInterface = 'wlp2s0';
+      } 
+      // Priority 2: Any series of 'wlp'
+      else {
+        targetInterface = interfaces.firstWhere(
+          (name) => name.startsWith('wlp'),
+          orElse: () => '',
+        );
+        
+        // Priority 3: Any series of 'enp'
+        if (targetInterface == '') {
+          targetInterface = interfaces.firstWhere(
+            (name) => name.startsWith('enp'),
+            orElse: () => '',
+          );
+        }
+        
+        // Priority 4: Any series of 'eth'
+        if (targetInterface == '') {
+          targetInterface = interfaces.firstWhere(
+            (name) => name.startsWith('eth'),
+            orElse: () => '',
+          );
+        }
+      }
+  
+      // If no interface was found based on priorities, return null
+      if (targetInterface == null || targetInterface.isEmpty) {
+        return '';
+      }
+  
+      // Read the address file for the selected interface
+      final addressFile = File('/sys/class/net/$targetInterface/address');
+      
+      if (await addressFile.exists()) {
+        String macWithColons = await addressFile.readAsString();
+        // Trim whitespace and remove colons
+        return macWithColons.trim().replaceAll(':', '');
+      }
+  
+    } catch (e) {
+      // Handle permissions errors or unexpected IO issues
+      print('Error fetching MAC address: $e');
+    }
+  
+    return '';
+  }
+  
+  final String deviceId = await getMacAddressId();
   debugPrint('Main: Session ID before network monitoring: $currentSessionId');
   debugPrint('Main: Password before network monitoring: $currentPassword');
   print(deviceId);
@@ -634,18 +712,7 @@ Future<void> _startDiscovery(
 
   final localIp = await _getDeviceIp();
 
-  Map<String, dynamic> makeIamAlive() {
-    return {
-      'type': 'iam_alive',
-      'ip': localIp ?? '0.0.0.0',
-      'port': SHARED_PORT, 
-      'session_id': currentSessionId,
-      'password': currentPassword,
-      'device_id': deviceId,
-    };
-  }
-
-  _udpListenSocket!.listen((RawSocketEvent event) {
+  _udpListenSocket!.listen((RawSocketEvent event) async {
     if (event != RawSocketEvent.read) return;
     try {
       final Datagram? dg = _udpListenSocket!.receive();
@@ -658,7 +725,17 @@ Future<void> _startDiscovery(
         
         // SIMPLE: We assume the sender is listening on the SAME port number via TCP
         debugPrint('[Discovery] Request from $remoteAddr. Replying via TCP:$SHARED_PORT');
-        _respondViaTcp(remoteAddr, SHARED_PORT, makeIamAlive());
+
+        final deviceName = await bind.getXConnectDeviceName();
+
+        _respondViaTcp(remoteAddr, SHARED_PORT, {
+      'type': 'iam_alive',
+      'ip': localIp ?? '0.0.0.0',
+      'port': SHARED_PORT, 
+      'session_id': currentSessionId,
+      'password': currentPassword,
+      'device_id': deviceName != '' && deviceName != null ? deviceName : deviceId,
+    });
       }
     } catch (e) {
       // Ignore

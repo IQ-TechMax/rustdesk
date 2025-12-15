@@ -4,42 +4,56 @@ import 'dart:io'; // Import for InternetAddress.lookup
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_hbb/models/platform_model.dart';
 
 class NetworkMonitor {
   static const String _apiUrl =
-      'https://dev.xwall.io/public/api/updateRemoteDetails';
+      'https://web.xwall.io/public/api/updateRemoteDetails';
   static Timer? _debounceTimer; // Debounce timer for network changes
 
   static Future<void> _sendPostRequest(
-      String sessionId, String password, String deviceId) async {
+    String sessionId, String password, String deviceId) async {
+  
     final Map<String, String> requestBody = {
-      "serialnumber": deviceId, // Using deviceId for serialNumber
-      "sessionid": sessionId,
-      "password": password,
-      "status": "online"
+      'serialnumber': deviceId,
+      'sessionid': sessionId,
+      'password': password,
+      'status': 'online'
     };
-    print('Sending POST request with:');
-    print('  URL: $_apiUrl');
+  
+    print('Sending POST request to: $_apiUrl');
+    print('  Serial: $deviceId');
     print('  Session ID: $sessionId');
-    print('  Password: $password');
-    print('  Request Body: $requestBody');
+    // print('  Password: $password'); // Don't log passwords!
+  
     try {
       final response = await http.post(
         Uri.parse(_apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(requestBody),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        // FIX: Pass the Map directly. Do NOT use jsonEncode.
+        // The http package will automatically convert this to x-www-form-urlencoded
+        body: requestBody, 
       );
-
+  
       if (response.statusCode == 200) {
-        print('POST Request Successful:');
-        print('  URL: $_apiUrl');
-        print('  Method: POST');
-        print('  Request Body: $requestBody');
+        // Parse the JSON response from the server
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        
+        print('✅ POST Request Successful');
+        print('  Message: ${responseData['message']}');
+        print('  Device Name Recieved: ${responseData['deviceName']}');
+
+        if (responseData != null && responseData['deviceName'] != null && responseData['deviceName'] != '') {
+          await bind.setXConnectDeviceName(value: responseData['deviceName']);
+        }
       } else {
-        print('POST Request Failed with status: ${response.statusCode}');
+        print('❌ POST Request Failed with status: ${response.statusCode}');
+        print('  Response: ${response.body}');
       }
     } catch (e, stacktrace) {
-      print('Error sending POST request: $e');
+      print('❌ Error sending POST request: $e');
       print('Stacktrace: $stacktrace');
     }
   }
