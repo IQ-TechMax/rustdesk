@@ -613,12 +613,12 @@ class ServerModel with ChangeNotifier {
   void showLoginDialog(Client client) {
     showClientDialog(
       client,
-      client.isFileTransfer 
-          ? "Transfer file" 
+      client.isFileTransfer
+          ? "Transfer file"
           : client.isViewCamera
               ? "View camera"
-              : client.isTerminal 
-                  ? "Terminal" 
+              : client.isTerminal
+                  ? "Terminal"
                   : "Share screen",
       'Do you accept?',
       'android_new_connection_tip',
@@ -747,6 +747,19 @@ class ServerModel with ChangeNotifier {
     _clients.clear();
     tabController.state.value.tabs.clear();
     if (isAndroid) androidUpdatekeepScreenOn();
+  }
+
+  Future<void> closeConnectionById(int id) async {
+    final client = _clients.firstWhere((client) => client.id == id);
+    await bind.cmCloseConnection(connId: id);
+    _clients.remove(client);
+  }
+
+  Future<void> closeConnectionByPeerId(String peerId) async {
+    final client = _clients.firstWhere((client) => client.peerId == peerId);
+    await bind.cmCloseConnection(connId: client.id);
+    _clients.remove(client);
+    tabController.remove(_clients.indexOf(client));
   }
 
   void jumpTo(int id) {

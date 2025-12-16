@@ -13,16 +13,22 @@ Future<DeviceAction?> showXConnectOptionsDialog(BuildContext context) {
     builder: (BuildContext context) {
       // Using a BackdropFilter for the blur effect
       return BackdropFilter(
-        filter: ImageFilter.blur(sigmaX:10, sigmaY: 10),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Dialog(
           backgroundColor: Colors.transparent, // Transparent to see the blur
           elevation: 0,
-          insetPadding: const EdgeInsets.all(20), // Add padding around the dialog
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), // Add rounded corners to the dialog itself
+          insetPadding:
+              const EdgeInsets.all(20), // Add padding around the dialog
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                  20)), // Add rounded corners to the dialog itself
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800), // Max width for larger screens
-            child: Padding( // Added this Padding widget
-              padding: const EdgeInsets.all(20.0), // This will space out the content from the corners
+            constraints: const BoxConstraints(
+                maxWidth: 800), // Max width for larger screens
+            child: Padding(
+              // Added this Padding widget
+              padding: const EdgeInsets.all(
+                  20.0), // This will space out the content from the corners
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -48,40 +54,51 @@ Future<DeviceAction?> showXConnectOptionsDialog(BuildContext context) {
                     builder: (context, constraints) {
                       final isWide = constraints.maxWidth > 500;
                       return GridView.count(
-                        crossAxisCount: isWide ? 4 : 2, // 4 items in a row on wide screens, 2 on narrow
+                        crossAxisCount: isWide
+                            ? 4
+                            : 2, // 4 items in a row on wide screens, 2 on narrow
                         mainAxisSpacing: 20,
                         crossAxisSpacing: 20,
                         shrinkWrap: true,
-                        childAspectRatio: 0.8, // Adjust aspect ratio to provide more height
+                        childAspectRatio:
+                            0.8, // Adjust aspect ratio to provide more height
                         physics: const NeverScrollableScrollPhysics(),
                         children: <Widget>[
                           _buildDialogOption(
                             context: context,
-                            iconPath: 'assets/xConnect-Icon.png',
+                            iconPath: 'assets/xBoard.png',
                             label: 'X Board',
-                            description: 'Turn screen into a digital whiteboard. Write, draw, and explain effortlessly for interactive lessons, brainstorming sessions, or presentations.',
-                            onTap: () => Navigator.of(context).pop(DeviceAction.xBoard),
+                            description:
+                                'Turn screen into a digital whiteboard. Write, draw, and explain effortlessly for interactive lessons, brainstorming sessions, or presentations.',
+                            onTap: () =>
+                                Navigator.of(context).pop(DeviceAction.xBoard),
                           ),
                           _buildDialogOption(
                             context: context,
-                            iconPath: 'assets/xConnect-Icon.png',
+                            iconPath: 'assets/xCast.png',
                             label: 'X Cast',
-                            description: 'Cast content from your tablet directly onto xWell. Access lessons, materials, and media for an engaging big-well experience.',
-                            onTap: () => Navigator.of(context).pop(DeviceAction.xCast),
+                            description:
+                                'Cast content from your tablet directly onto xWell. Access lessons, materials, and media for an engaging big-well experience.',
+                            onTap: () =>
+                                Navigator.of(context).pop(DeviceAction.xCast),
                           ),
                           _buildDialogOption(
                             context: context,
-                            iconPath: 'assets/xConnect-Icon.png',
+                            iconPath: 'assets/xCtrl.png',
                             label: 'X Ctrl',
-                            description: 'Take full control with keyboard and mouse. Navigate, manage, and interact with content smoothly on xWell.',
-                            onTap: () => Navigator.of(context).pop(DeviceAction.xCtrl),
+                            description:
+                                'Take full control with keyboard and mouse. Navigate, manage, and interact with content smoothly on xWell.',
+                            onTap: () =>
+                                Navigator.of(context).pop(DeviceAction.xCtrl),
                           ),
                           _buildDialogOption(
                             context: context,
-                            iconPath: 'assets/xConnect-Icon.png',
+                            iconPath: 'assets/xCtrlView.png',
                             label: 'X Ctrl (vue)',
-                            description: 'Mirror and control xWell from your tablet.',
-                            onTap: () => Navigator.of(context).pop(DeviceAction.xCtrlView),
+                            description:
+                                'Mirror and control xWell from your tablet.',
+                            onTap: () => Navigator.of(context)
+                                .pop(DeviceAction.xCtrlView),
                           ),
                         ],
                       );
@@ -109,31 +126,37 @@ Widget _buildDialogOption({
     onTap: onTap,
     borderRadius: BorderRadius.circular(12),
     child: Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withOpacity(0.3)),
       ),
-      child: SingleChildScrollView( // Added this widget to prevent overflow
+      child: SingleChildScrollView(
+        // Added this widget to prevent overflow
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset(iconPath, width: 40, height: 40, fit: BoxFit.contain), // Use a real icon here
-            const SizedBox(height: 12),
+            Image.asset(iconPath,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover), // Use a real icon here
             Text(
               label,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               description,
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+              textAlign: TextAlign.center,
+              style:
+                  TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 8),
             ),
           ],
         ),

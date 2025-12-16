@@ -28,8 +28,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 import '../widgets/button.dart';
 import 'package:flutter_hbb/models/device_discovery_model.dart'; // Import the new model
-
-import 'dart:io';
+import 'package:flutter_hbb/desktop/widgets/xConnectOptions.dart';
 
 Future<String?> getLocalIpFallback() async {
   try {
@@ -95,7 +94,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 40), // equal space above logo
+                    const SizedBox(height: 80), // equal space above logo
                     Center(
                       child: Image.asset(
                         'assets/xConnect-Logo.png',
@@ -126,7 +125,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                 ),
                               ),
                               alignment: Alignment.topLeft,
-                              padding: const EdgeInsets.all(16.0),
+                              padding: const EdgeInsets.all(32),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -137,90 +136,75 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                       const Text(
                                         'Devices',
                                         style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 16,
+                                          color: Colors.white,
+                                          fontSize: 24,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                       Container(),
                                     ],
                                   ),
-                                  const SizedBox(height: 20),
-                                  Obx(() {
-                                    if (_deviceDiscoveryController
-                                            .isLoading.value &&
-                                        _deviceDiscoveryController
-                                            .discoveredDevices.isEmpty) {
-                                      debugPrint(
-                                          "[UI] Device discovery is loading");
-                                      return Center(
-                                        child: Column(
-                                          children: [
-                                            CircularProgressIndicator(
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                      Colors.white),
-                                            ),
-                                            SizedBox(height: 10),
-                                            Text(
-                                              "🔍 Finding devices...",
-                                              style: TextStyle(
-                                                  color: Colors.white),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    } else if (_deviceDiscoveryController
-                                        .discoveredDevices.isEmpty) {
-                                      debugPrint(
-                                          "[UI] Discovery complete, No devices found");
-                                      return Center(
-                                        child: Text(
-                                          "No devices available",
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      );
-                                    } else {
-                                      debugPrint(
-                                          "[UI] Discovery complete, ${_deviceDiscoveryController.discoveredDevices.length} devices found");
-                                      return Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _deviceDiscoveryController
-                                                .statusText.value,
+                                  const SizedBox(height: 30),
+                                  Expanded(
+                                    child: Obx(() {
+                                      if (_deviceDiscoveryController
+                                              .isLoading.value &&
+                                          _deviceDiscoveryController
+                                              .discoveredDevices.isEmpty) {
+                                        // This part is fine, it will be centered in the expanded space
+                                        return Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              CircularProgressIndicator(
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(Colors.white),
+                                              ),
+                                              SizedBox(height: 10),
+                                              Text(
+                                                "🔍 Finding devices...",
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      } else if (_deviceDiscoveryController
+                                          .discoveredDevices.isEmpty) {
+                                        // This part is also fine
+                                        return const Center(
+                                          child: Text(
+                                            "No devices available",
                                             style:
                                                 TextStyle(color: Colors.white),
                                           ),
-                                          const SizedBox(height: 10),
-                                          Center(
-                                            child: Wrap(
-                                              alignment: WrapAlignment.center,
-                                              runAlignment:
-                                                  WrapAlignment.center,
-                                              spacing: 20,
-                                              runSpacing: 20,
-                                              children:
-                                                  _deviceDiscoveryController
-                                                      .discoveredDevices
-                                                      .map((device) {
-                                                final String schoolName =
-                                                    device.schoolName;
-                                                debugPrint(
-                                                    "UI: Rendering device: $schoolName, online: true");
-                                                return DeviceCard(
-                                                  device: device,
-                                                  logoPath:
-                                                      'assets/devices-icon.png',
-                                                );
-                                              }).toList(),
-                                            ),
+                                        );
+                                      } else {
+                                        // This is where the scroll view is needed.
+                                        // The SingleChildScrollView now has a constrained height from the Expanded widget
+                                        // and can correctly render the Wrap widget with a scrollbar if needed.
+                                        return SingleChildScrollView(
+                                          child: Wrap(
+                                            alignment: WrapAlignment.center,
+                                            runAlignment: WrapAlignment.center,
+                                            spacing: 20,
+                                            runSpacing: 20,
+                                            children: _deviceDiscoveryController
+                                                .discoveredDevices
+                                                .map((device) {
+                                              return DeviceCard(
+                                                device: device,
+                                                logoPath:
+                                                    'assets/devices-icon.png',
+                                              );
+                                            }).toList(),
                                           ),
-                                        ],
-                                      );
-                                    }
-                                  }),
+                                        );
+                                      }
+                                    }),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1212,7 +1196,7 @@ class DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const double iconDiameter = 70.0; // Diameter of the icon circle
-    const double cardHeight = 65; // Slightly taller than icon for padding
+    const double cardHeight = 60; // Slightly taller than icon for padding
     const double cardWidth = 300.0; // Overall width of the component
 
     // Horizontal offset for the blur background relative to the icon's center
@@ -1221,208 +1205,157 @@ class DeviceCard extends StatelessWidget {
     const double blurBackgroundPadding =
         15.0; // Internal padding for text within the blur
 
-    return Container(
-      // Optional: A container for the entire card if it has a consistent dark background,
-      // otherwise, this can be transparent. Based on the image, the dark background is global.
-      color:
-          Colors.transparent, // Assuming the dark blue is the screen background
-      width: cardWidth,
-      height: cardHeight,
-      child: Stack(
-        clipBehavior: Clip.none, // Allow children to paint outside its bounds
-        alignment: Alignment.centerLeft,
-        children: [
-          // 1. The Blurred Background for Text
-          Positioned(
-            left: blurBackgroundStartX, // Start from the center of the icon
-            right: 0, // Extends to the right edge of the card
-            top: 0,
-            bottom: 0,
-            child: ClipRRect(
-              borderRadius:
-                  BorderRadius.circular(15.0), // Rounded corners for the blur
-              child: BackdropFilter(
-                filter:
-                    ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0), // Apply blur
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(
-                        0.1), // Semi-transparent overlay for frosted effect
-                    // No need for a borderRadius here if ClipRRect handles it
-                  ),
-                ),
-              ),
-            ),
-          ),
+    RxBool isConnecting = RxBool(false);
+    RxBool isAlreadyConnected = RxBool(false);
 
-          // 2. Icon (positioned absolutely to overlap the blur)
-          Positioned(
-            left: 0, // Starts at the very left of the Stack
-            top: (cardHeight - iconDiameter) / 2, // Vertically center the icon
-            child: Container(
-              width: iconDiameter,
-              height: iconDiameter,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFF6C63FF), // Lighter purple
-                    Color(0xFF3F37C9), // Darker purple
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [],
-              ),
-              child: Center(
-                child: Container(
-                  width: iconDiameter -
-                      10, // Slightly smaller to show the gradient border
-                  height: iconDiameter - 10,
-                  decoration: const BoxDecoration(
-                    color: Color(
-                        0xFF3F37C9), // Darker inner color for the icon background
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Image.asset(
-                      logoPath,
-                      width: 50,
-                      height: 50,
-                      color: Colors.white,
+    debugPrint('connected clients ${gFFI.serverModel.clients}');
+
+    final Client? foundClient = gFFI.serverModel.clients.firstWhereOrNull(
+      (client) => client.peerId == '${device.ip}:12345',
+    );
+
+    if (foundClient != null) {
+      isAlreadyConnected.value = true;
+    }
+
+    return InkWell(
+        onTap: () async {
+          if (isAlreadyConnected.value) {
+            isConnecting.value = false;
+            return;
+          }
+          final selectedAction = await showDesktopXConnectOptionsDialog(
+              context); // Use the new desktop dialog
+          if (selectedAction != null) {
+            try {
+              switch (selectedAction) {
+                case DeviceAction.xCast:
+                  isConnecting.value = true;
+                  await _shareAndroidToLinux(
+                      device); // This function name is misleading for desktop, but we reuse it for now
+                  break;
+                case DeviceAction.xCtrlView:
+                  isConnecting.value = true;
+                  await _shareLinuxToAndroid(device, isViewOnly: true);
+                  break;
+              }
+              isConnecting.value = false;
+              isAlreadyConnected.value = true;
+            } catch (e) {
+              isConnecting.value = false;
+              debugPrint('Failed to connect to device');
+            }
+          }
+        },
+        child: Container(
+          width: cardWidth,
+          height: cardHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.centerLeft,
+            children: [
+              Positioned(
+                left: blurBackgroundStartX,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15.0),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-
-          // 3. Text Content (positioned over the blur, aligned with icon's start)
-          Positioned(
-            left: iconDiameter +
-                blurBackgroundPadding, // Icon diameter + padding to start text
-            top: (cardHeight - 45) /
-                2, // Adjust to vertically center the text block, assuming approx height 45
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Take minimum space needed
-              children: [
-                Text(
-                  device.schoolName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
+              Positioned(
+                left: 0,
+                top: (cardHeight - iconDiameter) / 2,
+                child: Container(
+                  width: iconDiameter,
+                  height: iconDiameter,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6C63FF), Color(0xFF3F37C9)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: iconDiameter - 10,
+                      height: iconDiameter - 10,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF3F37C9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Image.asset(
+                          logoPath,
+                          width: 50,
+                          height: 50,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Obx(() {
-                  Color statusColor;
-                  String statusText = device.tcpStatus.value;
-                  switch (device.tcpStatus.value) {
-                    case 'Connecting...':
-                      statusColor = Colors.orange;
-                      break;
-                    case 'Cannot connect':
-                      statusColor = Colors.red;
-                      break;
-                    case 'Ready':
-                    case 'Connected':
-                    case 'Sending info...':
-                    case 'Info sent':
-                      statusColor = Colors.green;
-                      statusText = 'Online';
-                      break;
-                    default:
-                      statusColor = Colors.grey;
-                  }
-                  return Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          shape: BoxShape.circle,
-                        ),
+              ),
+              Positioned(
+                left: iconDiameter + blurBackgroundPadding,
+                top: (cardHeight - 45) / 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      device.schoolName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        statusText,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(
-                          width: 10), // Spacing between status and buttons
-                      TextButton(
-                        onPressed: () => _handleGcButtonClick(device),
-                        style: TextButton.styleFrom(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          side: BorderSide(color: Colors.white70, width: 1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        child: Text(
-                          'GC',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 5), // Spacing between buttons
-                      TextButton(
-                        onPressed: () => _handleTcButtonClick(device),
-                        style: TextButton.styleFrom(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          side: BorderSide(color: Colors.white70, width: 1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(20), // Pill shape
-                          ),
-                        ),
-                        child: Text(
-                          'TC',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-              ],
-            ),
+                    ),
+                    const SizedBox(height: 2),
+                    Obx(() {
+                      return isAlreadyConnected.value
+                          ? Button(
+                              textColor: Colors.white,
+                              onTap: () {
+                                gFFI.serverModel.closeAll();
+                              },
+                              text: 'disconnect')
+                          : Text(
+                              isConnecting.value ? 'Connecting...' : 'Online',
+                              style: TextStyle(
+                                color: isConnecting.value
+                                    ? Colors.yellow
+                                    : Colors.green,
+                                fontSize: 14,
+                              ),
+                            );
+                    })
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+        ));
   }
 }
 
-Future<void> _handleTcButtonClick(Device device) async {
-  debugPrint('[UI] TC button clicked for ${device.schoolName}');
-  device.tcpStatus.value = 'Sending info...';
-
+Future<void> _shareAndroidToLinux(Device device) async {
+  // Logic remains similar to mobile, sends this device's info to the other device
   final localIp = await getLocalIpFallback();
-  final availablePort = 12345;
+  final availablePort =
+      12345; // Use a different port than mobile if running on same network for testing
   final rustDeskPassword = gFFI.serverModel.serverPasswd.text;
 
   if (localIp == null) {
-    debugPrint('[TC][Windows] Failed to get local IP.');
-    device.tcpStatus.value = 'Failed';
-    return;
+    throw Exception("Failed to get local IP");
   }
 
   final tcPayload = {
@@ -1431,36 +1364,27 @@ Future<void> _handleTcButtonClick(Device device) async {
     "port": availablePort,
     "password": rustDeskPassword,
   };
-
-  debugPrint(
-      '[TC][Windows] Sending TC info to ${device.ip}:${device.port}: $tcPayload');
-
-  // Send TCP request (no response expected for TC)
-  await XConnectTcpManager.to.sendRequest(
-    device.ip,
-    tcPayload,
-  );
-
-  device.tcpStatus.value = 'Info sent';
-  debugPrint('[TC][Windows] TC info sent to ${device.ip}:${device.port}');
+  await XConnectTcpManager.to.sendRequest(device.ip, tcPayload);
 }
 
-Future<void> _handleGcButtonClick(Device device) async {
-  debugPrint('[UI] GC button clicked for ${device.schoolName}');
-  device.tcpStatus.value = 'Requesting...';
+Future<void> _shareLinuxToAndroid(Device device,
+    {bool isBlankScreen = false, bool isViewOnly = false}) async {
+  // Logic remains similar to mobile, gets connection info from the other device and connects
+  final response = await XConnectTcpManager.to
+      .sendRequest(device.ip, {"action": "GC_REQUEST"});
+  if (response != null && response['action'] == 'GC_RESPONSE') {
+    final targetIp = response['ip'] as String;
+    final targetPort = response['port'];
+    final password = response['password'] as String;
 
-  final response = await XConnectTcpManager.to.sendRequest(
-    device.ip,
-    {"action": "GC_REQUEST"},
-  );
+    gFFI.dialogManager.setPasswordForAutoConnect(password);
 
-  if (response != null && response['ack'] == 'GC_ACK') {
-    debugPrint('[GC][Windows] ✅ Received GC_ACK from ${device.ip}');
-    debugPrint('[GC][Windows] Linux device info: '
-        'IP=${response['ip']}, PORT=${response['port']}, PASSWORD=${response['password']}');
-    device.tcpStatus.value = 'GC Info Received';
+    // On desktop, the connect() function opens a new window, which is already an async operation.
+    await connect(globalKey.currentContext!, '$targetIp:$targetPort',
+        password: password,
+        isViewOnly: isViewOnly,
+        isBlankScreen: isBlankScreen);
   } else {
-    debugPrint('[GC][Windows] ❌ No valid GC_ACK or no response');
-    device.tcpStatus.value = 'GC Failed';
+    throw Exception('Failed to get GC_RESPONSE');
   }
 }

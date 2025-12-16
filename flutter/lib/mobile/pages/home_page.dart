@@ -17,7 +17,6 @@ import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:flutter_hbb/mobile/widgets/xConnectOptions.dart';
-import 'package:flutter_hbb/mobile/widgets/connection_status_dialog.dart';
 import 'package:flutter_hbb/main.dart'; // Ensure globalKey is accessible
 import 'package:url_launcher/url_launcher.dart';
 
@@ -433,19 +432,61 @@ class DeviceCard extends StatelessWidget {
     const double blurBackgroundStartX = iconDiameter / 2;
     const double blurBackgroundPadding = 15.0;
 
-    return GestureDetector(
+    RxBool isConnecting = RxBool(false);
+    RxBool isAlreadyConnected = RxBool(false);
+
+    debugPrint('connected clients ${gFFI.serverModel.clients}');
+
+    return InkWell(
       onTap: () async {
-        if (device.tcpStatus.value == 'Busy') {
-          debugPrint('[UI] Device ${device.schoolName} is busy. Ignoring tap.');
-          return; // Do nothing if busy
+        if (isAlreadyConnected.value) {
+          isConnecting.value = false;
+          return;
         }
-        debugPrint('[UI] Device card pressed: ${device.schoolName}');
         final selectedAction = await showXConnectOptionsDialog(context);
         if (selectedAction != null) {
-          debugPrint(
-              'Selected action: $selectedAction for ${device.schoolName}');
-          // UPDATED: Call the generic connection handler for any action
-          _handleConnectionAction(context, device, selectedAction);
+          try {
+            switch (selectedAction) {
+              case DeviceAction.xBoard:
+                debugPrint('[ACTION] Executing xBoard logic...');
+                await _shareAndroidToLinux(device);
+                const String whiteboardAppPackageName = "cn.readpad.whiteboard";
+                try {
+                  // Use url_launcher to open the app by its package name
+                  if (!await launchUrl(
+                      Uri.parse('android-app://$whiteboardAppPackageName'))) {
+                    // This is a fallback if launchUrl doesn't work as expected on some devices
+                    await gFFI.invokeMethod("launch_another_app",
+                        {"package_name": whiteboardAppPackageName});
+                  }
+                  debugPrint(
+                      '[UI] Launch intent sent for $whiteboardAppPackageName');
+                } catch (e) {
+                  debugPrint('[UI] Failed to launch whiteboard app: $e');
+                }
+
+                break;
+              case DeviceAction.xCast:
+                debugPrint('[ACTION] Executing xCast logic...');
+                await _shareAndroidToLinux(device);
+                break;
+              case DeviceAction.xCtrl:
+                debugPrint('[ACTION] Executing xCtrl logic...');
+                await _shareLinuxToAndroid(device, isBlankScreen: true);
+                break;
+              case DeviceAction.xCtrlView:
+                debugPrint('[ACTION] Executing xCtrlView logic...');
+                await _shareLinuxToAndroid(device, isViewOnly: true);
+                break;
+            }
+
+            isConnecting.value = false;
+            isAlreadyConnected.value = true;
+          } catch (e) {
+            isConnecting.value = false;
+            debugPrint(
+                '[UI] Error handling connection action for ${device.schoolName}: $e');
+          }
         }
       },
       child: Container(
@@ -543,107 +584,8 @@ class DeviceCard extends StatelessWidget {
   }
 }
 
-Future<void> _handleConnectionAction(
-    BuildContext context, Device device, DeviceAction action) async {
-  final statusNotifier =
-      ValueNotifier<ConnectionStatus>(ConnectionStatus.connecting);
-
-  ValueNotifier<bool> isCanceled = ValueNotifier<bool>(false);
-
-  final dialogContextCompleter = Completer<BuildContext>();
-
-  // The status dialog is shown immediately. It's non-dismissible.
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) {
-      if (!dialogContextCompleter.isCompleted) {
-        dialogContextCompleter.complete(dialogContext);
-      }
-      return ValueListenableBuilder<ConnectionStatus>(
-        valueListenable: statusNotifier,
-        builder: (context, status, child) {
-          return ConnectionStatusDialog(
-            status: status,
-            onCancel: () {
-              debugPrint(
-                  '[UI] Connection cancelled by user for action: $action.');
-              isCanceled.value = true;
-              gFFI.serverModel.closeAll();
-              Navigator.of(dialogContext).pop();
-            },
-            onDisconnect: () {
-              debugPrint('[UI] Disconnected by user for action: $action.');
-              gFFI.serverModel.closeAll();
-              Navigator.of(dialogContext).pop();
-            },
-          );
-        },
-      );
-    },
-  );
-
-  final dialogContext = await dialogContextCompleter.future;
-
-  // --- ACTION-SPECIFIC CONNECTION LOGIC ---
-  try {
-    debugPrint('[UI] Initiating connection for action: $action');
-
-    // This switch statement directs the logic based on the selected action.
-    switch (action) {
-      case DeviceAction.xBoard:
-        debugPrint('[ACTION] Executing xBoard logic...');
-        await _shareAndroidToLinux(device, isCanceled);
-        const String whiteboardAppPackageName = "cn.readpad.whiteboard";
-        try {
-          // Use url_launcher to open the app by its package name
-          if (!await launchUrl(
-              Uri.parse('android-app://$whiteboardAppPackageName'))) {
-            // This is a fallback if launchUrl doesn't work as expected on some devices
-            await gFFI.invokeMethod("launch_another_app",
-                {"package_name": whiteboardAppPackageName});
-          }
-          debugPrint('[UI] Launch intent sent for $whiteboardAppPackageName');
-        } catch (e) {
-          debugPrint('[UI] Failed to launch whiteboard app: $e');
-        }
-
-        break;
-      case DeviceAction.xCast:
-        debugPrint('[ACTION] Executing xCast logic...');
-        await _shareAndroidToLinux(device, isCanceled);
-        break;
-      case DeviceAction.xCtrl:
-        debugPrint('[ACTION] Executing xCtrl logic...');
-        // TODO: Replace this with the actual function for xCtrl.
-        await _shareLinuxToAndroid(device, isCanceled, isBlankScreen: true);
-        break;
-      case DeviceAction.xCtrlView:
-        debugPrint('[ACTION] Executing xCtrlView logic...');
-        await _shareLinuxToAndroid(device, isCanceled, isViewOnly: true);
-        break;
-    }
-
-    if (isCanceled.value) {
-      debugPrint('[UI] Connection was canceled for action: $action');
-      if (dialogContext.mounted) {
-        Navigator.of(dialogContext).pop();
-      }
-    } else {
-      device.tcpStatus.value = 'Connected';
-      debugPrint('[UI] Connection successful for action: $action');
-      statusNotifier.value = ConnectionStatus.connected;
-    }
-  } catch (e) {
-    debugPrint('[UI] Error during connection for action $action: $e');
-    statusNotifier.value = ConnectionStatus.failed;
-  }
-}
-
-Future<void> _shareAndroidToLinux(
-    Device device, ValueNotifier<bool> isCanceled) async {
+Future<void> _shareAndroidToLinux(Device device) async {
   debugPrint('[UI] TC button clicked for ${device.schoolName}');
-  device.tcpStatus.value = 'Sending info...';
 
   if (!gFFI.serverModel.inputOk) {
     debugPrint(
@@ -660,7 +602,6 @@ Future<void> _shareAndroidToLinux(
 
   if (localIp == null) {
     debugPrint('[TC] Failed to get local IP.');
-    isCanceled.value = true;
     return;
   }
 
@@ -673,19 +614,13 @@ Future<void> _shareAndroidToLinux(
 
   debugPrint('[TC] Sending TC info to ${device.ip}:${device.port}: $tcPayload');
 
-  if (isCanceled.value) {
-    debugPrint('[TC] Operation canceled before sending TC info.');
-    return;
-  }
-
   await XConnectTcpManager.to.sendRequest(device.ip, tcPayload);
   debugPrint('[TC] TC info sent to ${device.ip}:${device.port}');
 }
 
-Future<void> _shareLinuxToAndroid(Device device, ValueNotifier<bool> isCanceled,
+Future<void> _shareLinuxToAndroid(Device device,
     {bool isBlankScreen = false, bool isViewOnly = false}) async {
   debugPrint('[UI] GC button clicked for ${device.schoolName}');
-  device.tcpStatus.value = 'Requesting...';
 
   final response = await XConnectTcpManager.to
       .sendRequest(device.ip, {"action": "GC_REQUEST"});
@@ -696,17 +631,11 @@ Future<void> _shareLinuxToAndroid(Device device, ValueNotifier<bool> isCanceled,
     debugPrint('[GC] ✅ Received GC_ACK from ${device.ip}');
     debugPrint('[GC] Linux device info: '
         'IP=${response['ip']}, PORT=${response['port']}, PASSWORD=${response['password']}');
-    device.tcpStatus.value = 'GC Info Received';
     final String targetIp = response['ip'];
     final int targetPort = response['port'] ?? 12345;
     final String password = response['password'];
 
     debugPrint('[GC] Auto-connecting to $targetIp:$targetPort');
-
-    if (isCanceled.value) {
-      debugPrint('[GC] Operation canceled before connecting.');
-      return;
-    }
 
     gFFI.dialogManager.setPasswordForAutoConnect(password);
     if (globalKey.currentContext != null) {

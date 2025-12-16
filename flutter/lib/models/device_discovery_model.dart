@@ -144,7 +144,7 @@ class DeviceDiscoveryController extends GetxController {
     await _startUdpBroadcaster();
 
     // 2. UI Timeout logic
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 10), () {
       if (isLoading.value) {
         isLoading.value = false;
         if (discoveredDevices.isEmpty) {
@@ -160,8 +160,7 @@ class DeviceDiscoveryController extends GetxController {
     final deviceIp =
         (json['ip'] == '0.0.0.0' || json['ip'] == null) ? remoteIp : json['ip'];
 
-    final existingIndex =
-        discoveredDevices.indexWhere((d) => d.deviceId == deviceId);
+    final existingIndex = discoveredDevices.indexWhere((d) => d.ip == deviceIp);
 
     if (existingIndex != -1) {
       // Update existing
@@ -216,8 +215,8 @@ class DeviceDiscoveryController extends GetxController {
   void _checkDeviceLiveness() {
     final now = DateTime.now();
     discoveredDevices.removeWhere((device) {
-      // If we haven't seen them in 30 seconds, remove them
-      return now.difference(device.lastSeen.value).inSeconds > 30;
+      // If we haven't seen them in 10 seconds, remove them
+      return now.difference(device.lastSeen.value).inSeconds > 10;
     });
   }
 

@@ -42,13 +42,16 @@ class XConnectTcpManager extends GetxController {
                 json['remoteIp'] = client.remoteAddress.address;
                 _messageBus.value = json;
               }
+
+              debugPrint(
+                  '[XConnectTcpManager] -> Received message details : $json');
             } catch (e) {
               debugPrint('[XConnectTcpManager] ‼️ Error parsing data: $e');
             }
           },
           onDone: () {
             debugPrint(
-                '[XConnectTcpManager] -> Receiving self originated request from client: ${client.remoteAddress.address}');
+                '[XConnectTcpManager] -> Successfully Received message from client');
             client.destroy();
           },
           onError: (error) {
