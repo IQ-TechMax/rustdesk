@@ -9,7 +9,6 @@ import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:window_manager/window_manager.dart';
 // import 'package:flutter/services.dart';
-import 'package:flutter_hbb/models/device_discovery_model.dart';
 
 import '../../common/shared_state.dart';
 
@@ -44,8 +43,6 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
   _DesktopTabPageState() {
     RemoteCountState.init();
     Get.put<DesktopTabController>(tabController);
-    Get.put<DeviceDiscoveryController>(
-      DeviceDiscoveryController()); // Initialize the controller
     tabController.add(TabInfo(
         key: kTabLabelHomePage,
         label: kTabLabelHomePage,
@@ -66,9 +63,6 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
         }
       };
     }
-    // Trigger discovery after splash screen (assuming this is the main entry point after splash)
-    debugPrint('[UI] Splash completed, starting device discovery');
-    Get.find<DeviceDiscoveryController>().startDiscovery();
   }
 
   @override
@@ -91,7 +85,6 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
   void dispose() {
     // HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     Get.delete<DesktopTabController>();
-    Get.delete<DeviceDiscoveryController>(); // Dispose the controller
     super.dispose();
   }
 

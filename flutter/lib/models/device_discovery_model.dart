@@ -4,22 +4,19 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart';
+import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart'; // Ensure this import path is correct
 
 class Device {
-  // IP and port are final because they define the device's identity/endpoint
-  // and are unlikely to change during a session.
   final String ip;
   final int port;
 
-  // Make all mutable properties observable using Rx types.
-  // Use RxnString for nullable strings.
+  // Rx types for reactivity
   final RxnString sessionId;
   final RxnString password;
   final RxnString deviceId;
   final RxnString name;
   final RxString tcpStatus;
-  final Rx<DateTime> lastSeen; // Use Rx<DateTime> for the DateTime object
+  final Rx<DateTime> lastSeen;
 
   Device({
     required this.ip,
@@ -29,14 +26,13 @@ class Device {
     String? deviceId,
     String? name,
     String initialTcpStatus = 'Ready',
-  })  : this.sessionId = RxnString(sessionId),
-        this.password = RxnString(password),
-        this.deviceId = RxnString(deviceId),
-        this.name = RxnString(name),
-        this.tcpStatus = initialTcpStatus.obs,
-        this.lastSeen = DateTime.now().obs; //
+  })  : sessionId = RxnString(sessionId),
+        password = RxnString(password),
+        deviceId = RxnString(deviceId),
+        name = RxnString(name),
+        tcpStatus = initialTcpStatus.obs,
+        lastSeen = DateTime.now().obs;
 
-// The factory constructor remains the same for creating new instances.
   factory Device.fromJson(Map<String, dynamic> json, String ip, int port) {
     return Device(
       ip: ip,
@@ -49,21 +45,17 @@ class Device {
     );
   }
 
-  // **NEW**: Add an update method to change property values.
-  // This is much more efficient than creating a new Device object.
+  // Efficiently update existing device instead of replacing object
   void updateFromJson(Map<String, dynamic> json) {
-    // Update the values of the observable properties.
-    // This will automatically trigger UI updates in widgets that are listening.
     sessionId.value = json['session_id'];
     password.value = json['password'];
     deviceId.value = json['device_id'];
     name.value = json['name'];
-    lastSeen.value = DateTime.now(); // Always update lastSeen on new data
+    // CRITICAL: Always update timestamp to prevent removal
+    lastSeen.value = DateTime.now();
   }
 
   String get schoolName {
-    // No changes needed here, but note that this getter is not reactive by itself.
-    // The UI will update because it depends on deviceId, which IS reactive.
     if (deviceId.value != null && deviceId.value!.length > 6) {
       return deviceId.value!.substring(0, deviceId.value!.length);
     }
@@ -78,21 +70,34 @@ class DeviceDiscoveryController extends GetxController {
   RxBool isLoading = false.obs;
   RxString statusText = 'Initializing...'.obs;
 
-  RawDatagramSocket? _broadcastSocket; // Only for sending UDP
+  RawDatagramSocket? _broadcastSocket;
   StreamSubscription? _messageSubscription;
 
   Timer? _broadcastTimer;
   Timer? _livenessTimer;
 
-  final int _sharedPort = 64546; // UDP Send Port AND TCP Listen Port
+  // --- CONFIGURATION ---
+  final int _sharedPort = 64546;
   final String _broadcastAddress = '255.255.255.255';
   final String _anybodyAliveMessage = '{"type": "anybody_alive"}';
+
+  // TIMING STRATEGY: Fast Pulse, Slow Decay
+  // 1. Send requests frequently (every 2s) so devices respond often.
+  final Duration _broadcastInterval = const Duration(seconds: 2);
+
+  // 2. Check for dead devices often (every 3s).
+  final Duration _checkInterval = const Duration(seconds: 3);
+
+  // 3. Wait longer before removing (8s).
+  // This allows missing ~3 packets before the device disappears from UI.
+  final int _deviceTimeoutSeconds = 8;
 
   @override
   void onInit() {
     super.onInit();
     debugPrint('[UI] DeviceDiscoveryController initialized');
 
+    // Listen for replies from devices (via TCP Manager)
     _messageSubscription =
         XConnectTcpManager.to.messageStream.listen((message) {
       if (message['type'] == 'iam_alive') {
@@ -100,7 +105,7 @@ class DeviceDiscoveryController extends GetxController {
       }
     });
 
-    // Status listener
+    // Reactive status text
     discoveredDevices.listen((devices) {
       if (devices.isEmpty) {
         if (!isLoading.value) statusText.value = 'No devices available';
@@ -110,8 +115,9 @@ class DeviceDiscoveryController extends GetxController {
       }
     });
 
-    _livenessTimer = Timer.periodic(
-        const Duration(seconds: 10), (timer) => _checkDeviceLiveness());
+    // Start the janitor process to remove old devices
+    _livenessTimer =
+        Timer.periodic(_checkInterval, (timer) => _checkDeviceLiveness());
   }
 
   void clearDevices() {
@@ -128,6 +134,8 @@ class DeviceDiscoveryController extends GetxController {
     isLoading.value = true;
     statusText.value = 'Finding devices...';
     clearDevices();
+
+    // Android specific: Acquire Multicast Lock to allow UDP broadcast reception
     if (Platform.isAndroid) {
       try {
         await _nativeChannel.invokeMethod('acquire_multicast_lock');
@@ -136,15 +144,17 @@ class DeviceDiscoveryController extends GetxController {
         debugPrint('[Android] ❌ Failed to acquire multicast lock: $e');
       }
     }
+
     await _startDiscoveryService();
   }
 
   Future<void> _startDiscoveryService() async {
-    // 1. Start UDP Broadcast (To shout "Anybody out there?")
+    // 1. Start UDP Broadcast
     await _startUdpBroadcaster();
 
-    // 2. UI Timeout logic
-    Future.delayed(const Duration(seconds: 10), () {
+    // 2. Initial UI Timeout logic
+    // Just to turn off the "Loading" spinner if nothing is found initially
+    Future.delayed(const Duration(seconds: 6), () {
       if (isLoading.value) {
         isLoading.value = false;
         if (discoveredDevices.isEmpty) {
@@ -163,20 +173,19 @@ class DeviceDiscoveryController extends GetxController {
     final existingIndex = discoveredDevices.indexWhere((d) => d.ip == deviceIp);
 
     if (existingIndex != -1) {
-      // Update existing
+      // Update existing device (refreshes lastSeen timestamp)
       discoveredDevices[existingIndex].updateFromJson(json);
-      discoveredDevices.refresh(); // Trigger UI update
-      debugPrint('[Discovery] Updated device: $deviceIp');
+      discoveredDevices.refresh();
+      // debugPrint('[Discovery] Updated device: $deviceIp');
     } else {
-      // Add new
-      final newDevice = Device.fromJson(json, deviceIp,
-          12345); // Port 12345 is standard, or read from json['port']
+      // Add new device
+      final newDevice = Device.fromJson(json, deviceIp, 12345);
       discoveredDevices.add(newDevice);
       debugPrint('[Discovery] Found new device: $deviceIp ($deviceId)');
     }
   }
 
-  // --- UDP BROADCASTER (Sends Requests) ---
+  // --- UDP BROADCASTER ---
   Future<void> _startUdpBroadcaster() async {
     if (_broadcastSocket != null) return;
 
@@ -187,25 +196,29 @@ class DeviceDiscoveryController extends GetxController {
       debugPrint('[UDP] Broadcast socket ready.');
     } catch (e) {
       debugPrint('[UDP] Failed to create broadcast socket: $e');
+      _updateStatusOnError('UDP Socket Error');
       return;
     }
 
     _broadcastTimer?.cancel();
-    _broadcastTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _broadcastTimer = Timer.periodic(_broadcastInterval, (timer) {
       _sendBroadcast();
     });
-    _sendBroadcast(); // Send immediately
+
+    // BURST MODE: Send 3 packets rapidly at start to ensure immediate discovery
+    _sendBroadcast();
+    Future.delayed(const Duration(milliseconds: 400), _sendBroadcast);
+    Future.delayed(const Duration(milliseconds: 800), _sendBroadcast);
   }
 
   void _sendBroadcast() {
     if (_broadcastSocket == null) return;
     try {
-      debugPrint(
-          '[UDP] 🛰️ Sending "anybody_alive" to $_broadcastAddress:$_sharedPort');
+      // debugPrint('[UDP] 🛰️ Ping...');
       _broadcastSocket?.send(
         utf8.encode(_anybodyAliveMessage),
         InternetAddress(_broadcastAddress),
-        _sharedPort, // Destination Port (Linux is listening here)
+        _sharedPort,
       );
     } catch (e) {
       debugPrint('[UDP] Send error: $e');
@@ -214,10 +227,23 @@ class DeviceDiscoveryController extends GetxController {
 
   void _checkDeviceLiveness() {
     final now = DateTime.now();
+    bool removedAny = false;
+
     discoveredDevices.removeWhere((device) {
-      // If we haven't seen them in 10 seconds, remove them
-      return now.difference(device.lastSeen.value).inSeconds > 10;
+      final diff = now.difference(device.lastSeen.value).inSeconds;
+      // Use the 8-second threshold
+      if (diff > _deviceTimeoutSeconds) {
+        debugPrint(
+            '[Discovery] Removing inactive device: ${device.ip} (Inactive for ${diff}s)');
+        removedAny = true;
+        return true;
+      }
+      return false;
     });
+
+    if (removedAny && discoveredDevices.isEmpty) {
+      statusText.value = 'No devices available';
+    }
   }
 
   void _updateStatusOnError(String message) {
@@ -227,7 +253,6 @@ class DeviceDiscoveryController extends GetxController {
 
   @override
   void onClose() {
-    // Release the lock when the controller is closed
     if (Platform.isAndroid) {
       try {
         _nativeChannel.invokeMethod('release_multicast_lock');

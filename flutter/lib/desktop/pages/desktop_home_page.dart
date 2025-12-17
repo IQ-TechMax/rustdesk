@@ -84,137 +84,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final isIncomingOnly = bind.isIncomingOnly();
     return _buildBlock(
         child: (Platform.isWindows || Platform.isLinux)
-            ? Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/XconnectBackground.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 80), // equal space above logo
-                    Center(
-                      child: Image.asset(
-                        'assets/xConnect-Logo.png',
-                        width: 200, // reduced logo size
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(
-                        height: 40), // equal space between logo and blur card
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: 45.0,
-                          right: 45.0,
-                          bottom: 55.0,
-                        ), // custom margins
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16.0),
-                          child: BackdropFilter(
-                            filter:
-                                ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(16.0),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.08),
-                                ),
-                              ),
-                              alignment: Alignment.topLeft,
-                              padding: const EdgeInsets.all(32),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Devices',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      Container(),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 30),
-                                  Expanded(
-                                    child: Obx(() {
-                                      if (_deviceDiscoveryController
-                                              .isLoading.value &&
-                                          _deviceDiscoveryController
-                                              .discoveredDevices.isEmpty) {
-                                        // This part is fine, it will be centered in the expanded space
-                                        return Center(
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              CircularProgressIndicator(
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                        Color>(Colors.white),
-                                              ),
-                                              SizedBox(height: 10),
-                                              Text(
-                                                "🔍 Finding devices...",
-                                                style: TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      } else if (_deviceDiscoveryController
-                                          .discoveredDevices.isEmpty) {
-                                        // This part is also fine
-                                        return const Center(
-                                          child: Text(
-                                            "No devices available",
-                                            style:
-                                                TextStyle(color: Colors.white),
-                                          ),
-                                        );
-                                      } else {
-                                        // This is where the scroll view is needed.
-                                        // The SingleChildScrollView now has a constrained height from the Expanded widget
-                                        // and can correctly render the Wrap widget with a scrollbar if needed.
-                                        return SingleChildScrollView(
-                                          child: Wrap(
-                                            alignment: WrapAlignment.center,
-                                            runAlignment: WrapAlignment.center,
-                                            spacing: 20,
-                                            runSpacing: 20,
-                                            children: _deviceDiscoveryController
-                                                .discoveredDevices
-                                                .map((device) {
-                                              return DeviceCard(
-                                                device: device,
-                                                logoPath:
-                                                    'assets/devices-icon.png',
-                                              );
-                                            }).toList(),
-                                          ),
-                                        );
-                                      }
-                                    }),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
+            ? DeviceSelectionScreen(_deviceDiscoveryController)
             : Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1183,167 +1053,306 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
   });
 }
 
-class DeviceCard extends StatelessWidget {
-  final Device device;
-  final String logoPath;
+class DeviceSelectionScreen extends StatelessWidget {
+  final DeviceDiscoveryController _deviceDiscoveryController;
 
-  const DeviceCard({
-    super.key,
-    required this.device,
-    required this.logoPath,
-  });
+  const DeviceSelectionScreen(this._deviceDiscoveryController, {Key? key})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    const double iconDiameter = 70.0; // Diameter of the icon circle
-    const double cardHeight = 60; // Slightly taller than icon for padding
-    const double cardWidth = 300.0; // Overall width of the component
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double screenWidth = constraints.maxWidth;
+        final double screenHeight = constraints.maxHeight;
+        final bool isSmallScreen = screenWidth < 600;
+        final bool isShortScreen = screenHeight < 700;
 
-    // Horizontal offset for the blur background relative to the icon's center
-    // If blur starts from icon's center, its left will be iconDiameter / 2
-    const double blurBackgroundStartX = iconDiameter / 2;
-    const double blurBackgroundPadding =
-        15.0; // Internal padding for text within the blur
+        final double verticalGap = isShortScreen ? 20.0 : 80.0;
+        final double logoSize = isShortScreen ? 150.0 : 200.0;
+        final double sideMargin = isSmallScreen ? 16.0 : 45.0;
 
-    RxBool isConnecting = RxBool(false);
-    RxBool isAlreadyConnected = RxBool(false);
-
-    debugPrint('connected clients ${gFFI.serverModel.clients}');
-
-    final Client? foundClient = gFFI.serverModel.clients.firstWhereOrNull(
-      (client) => client.peerId == '${device.ip}:12345',
-    );
-
-    if (foundClient != null) {
-      isAlreadyConnected.value = true;
-    }
-
-    return InkWell(
-        onTap: () async {
-          if (isAlreadyConnected.value) {
-            isConnecting.value = false;
-            return;
-          }
-          final selectedAction = await showDesktopXConnectOptionsDialog(
-              context); // Use the new desktop dialog
-          if (selectedAction != null) {
-            try {
-              switch (selectedAction) {
-                case DeviceAction.xCast:
-                  isConnecting.value = true;
-                  await _shareAndroidToLinux(
-                      device); // This function name is misleading for desktop, but we reuse it for now
-                  break;
-                case DeviceAction.xCtrlView:
-                  isConnecting.value = true;
-                  await _shareLinuxToAndroid(device, isViewOnly: true);
-                  break;
-              }
-              isConnecting.value = false;
-              isAlreadyConnected.value = true;
-            } catch (e) {
-              isConnecting.value = false;
-              debugPrint('Failed to connect to device');
-            }
-          }
-        },
-        child: Container(
-          width: cardWidth,
-          height: cardHeight,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.centerLeft,
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/XconnectBackground.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: Column(
             children: [
-              Positioned(
-                left: blurBackgroundStartX,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(15.0),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                      ),
-                    ),
-                  ),
-                ),
+              SizedBox(height: verticalGap),
+              Image.asset(
+                'assets/xConnect-Logo.png',
+                width: logoSize,
+                fit: BoxFit.contain,
               ),
-              Positioned(
-                left: 0,
-                top: (cardHeight - iconDiameter) / 2,
-                child: Container(
-                  width: iconDiameter,
-                  height: iconDiameter,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6C63FF), Color(0xFF3F37C9)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+              SizedBox(height: isShortScreen ? 20 : 40),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: sideMargin,
+                    right: sideMargin,
+                    bottom: isSmallScreen ? 20.0 : 55.0,
                   ),
-                  child: Center(
-                    child: Container(
-                      width: iconDiameter - 10,
-                      height: iconDiameter - 10,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF3F37C9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Image.asset(
-                          logoPath,
-                          width: 50,
-                          height: 50,
-                          color: Colors.white,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16.0),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16.0),
+                          border:
+                              Border.all(color: Colors.white.withOpacity(0.08)),
+                        ),
+                        padding: EdgeInsets.all(isSmallScreen ? 16 : 32),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Devices',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: isSmallScreen ? 20 : 24,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Expanded(
+                              child: Obx(() {
+                                if (_deviceDiscoveryController
+                                        .isLoading.value &&
+                                    _deviceDiscoveryController
+                                        .discoveredDevices.isEmpty) {
+                                  return const Center(
+                                      child: CircularProgressIndicator(
+                                          color: Colors.white));
+                                } else if (_deviceDiscoveryController
+                                    .discoveredDevices.isEmpty) {
+                                  return const Center(
+                                    child: Text("No devices available",
+                                        style:
+                                            TextStyle(color: Colors.white70)),
+                                  );
+                                } else {
+                                  return GridView.builder(
+                                    // Use Clip.none so the icon shadows aren't cut off at the grid edges
+                                    clipBehavior: Clip.none,
+                                    padding: const EdgeInsets.only(
+                                        bottom: 20, top: 10),
+                                    gridDelegate:
+                                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                                      maxCrossAxisExtent: 400,
+                                      mainAxisExtent:
+                                          90, // Slightly taller than icon to allow shadow room
+                                      crossAxisSpacing: 20,
+                                      mainAxisSpacing: 20,
+                                    ),
+                                    itemCount: _deviceDiscoveryController
+                                        .discoveredDevices.length,
+                                    itemBuilder: (context, index) {
+                                      return DeviceCard(
+                                        device: _deviceDiscoveryController
+                                            .discoveredDevices[index],
+                                        logoPath: 'assets/devices-icon.png',
+                                      );
+                                    },
+                                  );
+                                }
+                              }),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              Positioned(
-                left: iconDiameter + blurBackgroundPadding,
-                top: (cardHeight - 45) / 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      device.schoolName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Obx(() {
-                      return isAlreadyConnected.value
-                          ? Button(
-                              textColor: Colors.white,
-                              onTap: () {
-                                gFFI.serverModel.closeAll();
-                              },
-                              text: 'disconnect')
-                          : Text(
-                              isConnecting.value ? 'Connecting...' : 'Online',
-                              style: TextStyle(
-                                color: isConnecting.value
-                                    ? Colors.yellow
-                                    : Colors.green,
-                                fontSize: 14,
-                              ),
-                            );
-                    })
-                  ],
-                ),
-              ),
             ],
           ),
-        ));
+        );
+      },
+    );
+  }
+}
+
+class DeviceCard extends StatefulWidget {
+  final Device device;
+  final String logoPath;
+
+  const DeviceCard({super.key, required this.device, required this.logoPath});
+
+  @override
+  State<DeviceCard> createState() => _DeviceCardState();
+}
+
+class _DeviceCardState extends State<DeviceCard> {
+  // Moving Rx variables to State so they don't reset when the parent widget rebuilds
+  final RxBool isConnecting = false.obs;
+  final RxBool isHovered = false.obs;
+
+  @override
+  Widget build(BuildContext context) {
+    const double iconDiameter = 80.0;
+    const double cardHeight = 90.0; // Total height of the grid slot
+
+    return MouseRegion(
+      onEnter: (_) => isHovered.value = true,
+      onExit: (_) => isHovered.value = false,
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () async {
+          // Check if already connected via your global model
+          final bool isAlreadyConnected = gFFI.serverModel.clients
+              .any((c) => c.peerId == '${widget.device.ip}:12345');
+
+          if (isAlreadyConnected) return;
+
+          final selectedAction =
+              await showDesktopXConnectOptionsDialog(context);
+          if (selectedAction != null) {
+            isConnecting.value = true;
+            try {
+              if (selectedAction == DeviceAction.xCast) {
+                await _shareAndroidToLinux(widget.device);
+              } else {
+                await _shareLinuxToAndroid(widget.device, isViewOnly: true);
+              }
+            } catch (e) {
+              debugPrint('Connection error: $e');
+            } finally {
+              isConnecting.value = false;
+            }
+          }
+        },
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.centerLeft,
+          children: [
+            // 1. The Background Card (Hover highlighting happens here)
+            Positioned(
+              left: iconDiameter / 2,
+              right: 0,
+              top:
+                  13, // Centered vertically relative to the 80px icon in a 90px slot
+              bottom: 13,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12.0),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                  child: Obx(() => AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          color: isHovered.value
+                              ? Colors.white.withOpacity(0.18)
+                              : Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(
+                            color: isHovered.value
+                                ? Colors.white.withOpacity(0.3)
+                                : Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                      )),
+                ),
+              ),
+            ),
+
+            // 2. The Floating Icon (Static - ignores hover highlight)
+            Positioned(
+              left: 0,
+              top: (cardHeight - iconDiameter) / 2,
+              child: Container(
+                width: iconDiameter,
+                height: iconDiameter,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF6C63FF), Color(0xFF3F37C9)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 10,
+                        offset: Offset(0, 4))
+                  ],
+                ),
+                padding: const EdgeInsets.all(2),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF3F37C9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      widget.logoPath,
+                      width: iconDiameter * 0.45,
+                      height: iconDiameter * 0.45,
+                      color: Colors.white,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 3. Text Content
+            Positioned(
+              left: iconDiameter + 15,
+              right: 15,
+              top: 0,
+              bottom: 0,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.device.schoolName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Obx(() {
+                    final bool isConnected = gFFI.serverModel.clients
+                        .any((c) => c.peerId == '${widget.device.ip}:12345');
+
+                    if (isConnected) {
+                      return GestureDetector(
+                        onTap: () => gFFI.serverModel.closeAll(),
+                        child: const Text("Disconnect",
+                            style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold)),
+                      );
+                    }
+                    return Text(
+                      isConnecting.value ? 'Connecting...' : 'Online',
+                      style: TextStyle(
+                        color: isConnecting.value
+                            ? Colors.yellow
+                            : Colors.greenAccent,
+                        fontSize: 13,
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

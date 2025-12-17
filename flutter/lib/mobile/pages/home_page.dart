@@ -106,164 +106,36 @@ class HomePageState extends State<HomePage> {
           return false;
         },
         child: Scaffold(
-          // backgroundColor: MyTheme.grayBg,
-          // appBar: AppBar(
-          //   centerTitle: true,
-          //   title: appTitle(),
-          //   // actions: _pages.elementAt(_selectedIndex).appBarActions,
-          // ),
-          // bottomNavigationBar: BottomNavigationBar(
-          //   key: navigationBarKey,
-          //   items: _pages
-          //       .map((page) =>
-          //           BottomNavigationBarItem(icon: page.icon, label: page.title))
-          //       .toList(),
-          //   currentIndex: _selectedIndex,
-          //   type: BottomNavigationBarType.fixed,
-          //   selectedItemColor: MyTheme.accent, //
-          //   unselectedItemColor: MyTheme.darkGray,
-          //   onTap: (index) => setState(() {
-          //     // close chat overlay when go chat page
-          //     if (_selectedIndex != index) {
-          //       _selectedIndex = index;
-          //       if (isChatPageCurrentTab) {
-          //         gFFI.chatModel.hideChatIconOverlay();
-          //         gFFI.chatModel.hideChatWindowOverlay();
-          //         gFFI.chatModel.mobileClearClientUnread(
-          //             gFFI.chatModel.currentKey.connId);
-          //       }
-          //     }
-          //   }),
-          // ),
-          body: Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/XconnectBackground.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const SizedBox(height: 80), // equal space above logo
-                Center(
-                  child: Image.asset(
-                    'assets/xConnect-Logo.png',
-                    width: 200, // reduced logo size
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(
-                    height: 40), // equal space between logo and blur card
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 25.0,
-                      right: 25.0,
-                      bottom: 25.0,
-                    ), // custom margins
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16.0),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(16.0),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.08),
-                            ),
-                          ),
-                          alignment: Alignment.topLeft,
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Devices',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Container(),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              Expanded(
-                                child: Obx(() {
-                                  if (_deviceDiscoveryController
-                                          .isLoading.value &&
-                                      _deviceDiscoveryController
-                                          .discoveredDevices.isEmpty) {
-                                    // This part is fine, it will be centered in the expanded space
-                                    return Center(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          CircularProgressIndicator(
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    Colors.white),
-                                          ),
-                                          SizedBox(height: 10),
-                                          Text(
-                                            "🔍 Finding devices...",
-                                            style:
-                                                TextStyle(color: Colors.white),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  } else if (_deviceDiscoveryController
-                                      .discoveredDevices.isEmpty) {
-                                    // This part is also fine
-                                    return const Center(
-                                      child: Text(
-                                        "No devices available",
-                                        style: TextStyle(color: Colors.white),
-                                      ),
-                                    );
-                                  } else {
-                                    // This is where the scroll view is needed.
-                                    // The SingleChildScrollView now has a constrained height from the Expanded widget
-                                    // and can correctly render the Wrap widget with a scrollbar if needed.
-                                    return SingleChildScrollView(
-                                      child: Wrap(
-                                        alignment: WrapAlignment.center,
-                                        runAlignment: WrapAlignment.center,
-                                        spacing: 20,
-                                        runSpacing: 20,
-                                        children: _deviceDiscoveryController
-                                            .discoveredDevices
-                                            .map((device) {
-                                          return DeviceCard(
-                                            device: device,
-                                            logoPath: 'assets/devices-icon.png',
-                                          );
-                                        }).toList(),
-                                      ),
-                                    );
-                                  }
-                                }),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ));
+            // backgroundColor: MyTheme.grayBg,
+            // appBar: AppBar(
+            //   centerTitle: true,
+            //   title: appTitle(),
+            //   // actions: _pages.elementAt(_selectedIndex).appBarActions,
+            // ),
+            // bottomNavigationBar: BottomNavigationBar(
+            //   key: navigationBarKey,
+            //   items: _pages
+            //       .map((page) =>
+            //           BottomNavigationBarItem(icon: page.icon, label: page.title))
+            //       .toList(),
+            //   currentIndex: _selectedIndex,
+            //   type: BottomNavigationBarType.fixed,
+            //   selectedItemColor: MyTheme.accent, //
+            //   unselectedItemColor: MyTheme.darkGray,
+            //   onTap: (index) => setState(() {
+            //     // close chat overlay when go chat page
+            //     if (_selectedIndex != index) {
+            //       _selectedIndex = index;
+            //       if (isChatPageCurrentTab) {
+            //         gFFI.chatModel.hideChatIconOverlay();
+            //         gFFI.chatModel.hideChatWindowOverlay();
+            //         gFFI.chatModel.mobileClearClientUnread(
+            //             gFFI.chatModel.currentKey.connId);
+            //       }
+            //     }
+            //   }),
+            // ),
+            body: DeviceSelectionScreen(_deviceDiscoveryController)));
   }
 
   Widget appTitle() {
@@ -414,163 +286,372 @@ class WebHomePage extends StatelessWidget {
   }
 }
 
-class DeviceCard extends StatelessWidget {
+class DeviceSelectionScreen extends StatelessWidget {
+  final DeviceDiscoveryController _deviceDiscoveryController;
+
+  const DeviceSelectionScreen(this._deviceDiscoveryController, {Key? key})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 1. Determine Layout Metrics
+        final double screenWidth = constraints.maxWidth;
+        final double screenHeight = constraints.maxHeight;
+
+        // Breakpoints
+        final bool isTablet = screenWidth >= 600;
+        final bool isLandscapePhone = !isTablet && (screenWidth > screenHeight);
+
+        // Dynamic Values
+        final double logoSize =
+            isLandscapePhone ? 120.0 : (isTablet ? 220.0 : 180.0);
+        final double sidePadding = isTablet ? 40.0 : 16.0;
+        final double verticalGap =
+            isLandscapePhone ? 10.0 : (isTablet ? 80.0 : 50.0);
+
+        // Grid Configuration
+        final double cardHeight = 80.0;
+        final double gridMaxCrossAxisExtent = isTablet ? 450.0 : 500.0;
+
+        return Scaffold(
+          resizeToAvoidBottomInset: false,
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/XconnectBackground.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  SizedBox(height: verticalGap),
+
+                  // Responsive Logo
+                  Flexible(
+                    flex: 0,
+                    child: Image.asset(
+                      'assets/xConnect-Logo.png',
+                      width: logoSize,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+
+                  SizedBox(height: isLandscapePhone ? 15 : 40),
+
+                  // Glass Panel
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(sidePadding, 0, sidePadding,
+                          isLandscapePhone ? 10 : 30),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20.0),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E1E1E).withOpacity(0.75),
+                              borderRadius: BorderRadius.circular(20.0),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.1),
+                                width: 1,
+                              ),
+                            ),
+                            padding: EdgeInsets.all(isTablet ? 32.0 : 16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Header
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Devices',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: isTablet ? 24 : 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    // Optional: Add a refresh icon here if needed
+                                  ],
+                                ),
+                                const SizedBox(height: 15),
+
+                                // Device List
+                                Expanded(
+                                  child: Obx(() {
+                                    if (_deviceDiscoveryController
+                                            .isLoading.value &&
+                                        _deviceDiscoveryController
+                                            .discoveredDevices.isEmpty) {
+                                      return const Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            CircularProgressIndicator(
+                                                color: Colors.white),
+                                            SizedBox(height: 10),
+                                            Text("🔍 Finding devices...",
+                                                style: TextStyle(
+                                                    color: Colors.white)),
+                                          ],
+                                        ),
+                                      );
+                                    } else if (_deviceDiscoveryController
+                                        .discoveredDevices.isEmpty) {
+                                      return const Center(
+                                        child: Text(
+                                          "No devices available",
+                                          style:
+                                              TextStyle(color: Colors.white70),
+                                        ),
+                                      );
+                                    } else {
+                                      // Responsive Grid View
+                                      return GridView.builder(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 20),
+                                        gridDelegate:
+                                            SliverGridDelegateWithMaxCrossAxisExtent(
+                                          maxCrossAxisExtent:
+                                              gridMaxCrossAxisExtent,
+                                          mainAxisExtent: cardHeight,
+                                          crossAxisSpacing: 20,
+                                          mainAxisSpacing: 20,
+                                        ),
+                                        itemCount: _deviceDiscoveryController
+                                            .discoveredDevices.length,
+                                        itemBuilder: (context, index) {
+                                          final device =
+                                              _deviceDiscoveryController
+                                                  .discoveredDevices[index];
+                                          return DeviceCard(
+                                            device: device,
+                                            logoPath: 'assets/devices-icon.png',
+                                            // Pass dimensions down to card for calculation
+                                            totalHeight: cardHeight,
+                                            isTablet: isTablet,
+                                          );
+                                        },
+                                      );
+                                    }
+                                  }),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class DeviceCard extends StatefulWidget {
   final Device device;
   final String logoPath;
+  final double totalHeight;
+  final bool isTablet;
 
   const DeviceCard({
     super.key,
     required this.device,
     required this.logoPath,
+    required this.totalHeight,
+    required this.isTablet,
   });
 
   @override
+  State<DeviceCard> createState() => _DeviceCardState();
+}
+
+class _DeviceCardState extends State<DeviceCard> {
+  final RxBool isConnecting = false.obs;
+
+  bool get isAlreadyConnected {
+    return gFFI.serverModel.clients
+        .any((client) => client.peerId == '${widget.device.ip}:12345');
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const double iconDiameter = 70.0;
-    const double cardHeight = 65;
-    const double cardWidth = 300.0;
-    const double blurBackgroundStartX = iconDiameter / 2;
-    const double blurBackgroundPadding = 15.0;
-
-    RxBool isConnecting = RxBool(false);
-    RxBool isAlreadyConnected = RxBool(false);
-
-    debugPrint('connected clients ${gFFI.serverModel.clients}');
+    // 2. Adaptive Icon Size
+    // Tablet: 80px icon | Mobile: 60px icon
+    final double iconDiameter = 80.0;
 
     return InkWell(
       onTap: () async {
-        if (isAlreadyConnected.value) {
-          isConnecting.value = false;
-          return;
-        }
+        if (isAlreadyConnected) return;
+
         final selectedAction = await showXConnectOptionsDialog(context);
+
         if (selectedAction != null) {
+          isConnecting.value = true;
           try {
             switch (selectedAction) {
               case DeviceAction.xBoard:
-                debugPrint('[ACTION] Executing xBoard logic...');
-                await _shareAndroidToLinux(device);
+                await _shareAndroidToLinux(widget.device);
                 const String whiteboardAppPackageName = "cn.readpad.whiteboard";
                 try {
-                  // Use url_launcher to open the app by its package name
                   if (!await launchUrl(
                       Uri.parse('android-app://$whiteboardAppPackageName'))) {
-                    // This is a fallback if launchUrl doesn't work as expected on some devices
                     await gFFI.invokeMethod("launch_another_app",
                         {"package_name": whiteboardAppPackageName});
                   }
-                  debugPrint(
-                      '[UI] Launch intent sent for $whiteboardAppPackageName');
                 } catch (e) {
-                  debugPrint('[UI] Failed to launch whiteboard app: $e');
+                  debugPrint('[UI] Failed to launch app: $e');
                 }
-
                 break;
               case DeviceAction.xCast:
-                debugPrint('[ACTION] Executing xCast logic...');
-                await _shareAndroidToLinux(device);
+                await _shareAndroidToLinux(widget.device);
                 break;
               case DeviceAction.xCtrl:
-                debugPrint('[ACTION] Executing xCtrl logic...');
-                await _shareLinuxToAndroid(device, isBlankScreen: true);
+                await _shareLinuxToAndroid(widget.device, isBlankScreen: true);
                 break;
               case DeviceAction.xCtrlView:
-                debugPrint('[ACTION] Executing xCtrlView logic...');
-                await _shareLinuxToAndroid(device, isViewOnly: true);
+                await _shareLinuxToAndroid(widget.device, isViewOnly: true);
                 break;
             }
-
-            isConnecting.value = false;
-            isAlreadyConnected.value = true;
+            if (mounted) setState(() {});
           } catch (e) {
+            debugPrint('[UI] Error: $e');
+          } finally {
             isConnecting.value = false;
-            debugPrint(
-                '[UI] Error handling connection action for ${device.schoolName}: $e');
           }
         }
       },
-      child: Container(
-        color: Colors.transparent,
-        width: cardWidth,
-        height: cardHeight,
+      child: SizedBox(
+        height: widget.totalHeight,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.centerLeft,
           children: [
+            // 1. Blur Background Card
             Positioned(
-              left: blurBackgroundStartX,
+              left: iconDiameter / 2,
               right: 0,
-              top: 0,
-              bottom: 0,
+              // Centered vertically with margin
+              top: 8,
+              bottom: 8,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15.0),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(15.0),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
                   ),
                 ),
               ),
             ),
+
+            // 2. Floating Icon
+            // Mathematically centered vertically
             Positioned(
               left: 0,
-              top: (cardHeight - iconDiameter) / 2,
+              top: 0,
               child: Container(
                 width: iconDiameter,
                 height: iconDiameter,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [Color(0xFF6C63FF), Color(0xFF3F37C9)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black38,
+                        blurRadius: 8,
+                        offset: Offset(0, 4))
+                  ],
                 ),
-                child: Center(
-                  child: Container(
-                    width: iconDiameter - 10,
-                    height: iconDiameter - 10,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF3F37C9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        logoPath,
-                        width: 50,
-                        height: 50,
-                        color: Colors.white,
-                      ),
+                padding: const EdgeInsets.all(2),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF3F37C9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      widget.logoPath,
+                      width: iconDiameter * 0.55,
+                      height: iconDiameter * 0.55,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ),
             ),
+
+            // 3. Text Content
             Positioned(
-              left: iconDiameter + blurBackgroundPadding,
-              top: (cardHeight - 45) / 2,
+              left: iconDiameter + 15,
+              right: 15,
+              top: 0,
+              bottom: 0,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    device.schoolName,
-                    style: const TextStyle(
+                    widget.device.schoolName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      // Larger font for Tablet
+                      fontSize: widget.isTablet ? 18 : 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Obx(() {
-                    // FIX 2: Simplify status logic
-                    bool isBusy = device.tcpStatus.value == 'Busy';
+                    if (isAlreadyConnected) {
+                      return GestureDetector(
+                        onTap: () => gFFI.serverModel.closeAll(),
+                        child: const Text("Disconnect",
+                            style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold)),
+                      );
+                    }
+
+                    if (isConnecting.value) {
+                      return const Text("Connecting...",
+                          style: TextStyle(color: Colors.yellow, fontSize: 13));
+                    }
+
+                    // Status Logic (Example)
+                    bool isBusy = widget.device.tcpStatus.value == 'Busy';
+
                     return Text(
                       isBusy ? 'Busy' : 'Online',
                       style: TextStyle(
-                        color: isBusy ? Colors.yellow : Colors.green,
-                        fontSize: 14,
+                        color:
+                            isBusy ? Colors.orangeAccent : Colors.greenAccent,
+                        fontSize: 13,
                       ),
                     );
                   }),

@@ -1,110 +1,132 @@
-// You can place this function within your home_page.dart file or a new utility file.
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
-// An enum to represent the selected action
 enum DeviceAction { xBoard, xCast, xCtrl, xCtrlView }
 
 Future<DeviceAction?> showXConnectOptionsDialog(BuildContext context) {
   return showDialog<DeviceAction>(
     context: context,
-    barrierColor: Colors.black.withOpacity(0.5), // Darken the background a bit
+    // Darken background
+    barrierColor: Colors.black.withOpacity(0.6),
+    barrierDismissible: true,
     builder: (BuildContext context) {
-      // Using a BackdropFilter for the blur effect
-      return BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Dialog(
-          backgroundColor: Colors.transparent, // Transparent to see the blur
-          elevation: 0,
-          insetPadding:
-              const EdgeInsets.all(20), // Add padding around the dialog
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                  20)), // Add rounded corners to the dialog itself
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-                maxWidth: 800), // Max width for larger screens
-            child: Padding(
-              // Added this Padding widget
-              padding: const EdgeInsets.all(
-                  20.0), // This will space out the content from the corners
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      const Text(
-                        'Modes',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+      // 1. Determine screen metrics
+      final double screenWidth = MediaQuery.of(context).size.width;
+      final bool isNarrow = screenWidth < 600; // Mobile vs Tablet logic
+      final double contentWidth = isNarrow ? 340 : 700;
+
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.all(20),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: contentWidth),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              // 2. Blur contained inside
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                padding: const EdgeInsets.all(25.0),
+                decoration: BoxDecoration(
+                  // Dark glass style
+                  color: const Color(0xFF1E1E1E).withOpacity(0.85),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
                   ),
-                  const SizedBox(height: 20),
-                  // Using LayoutBuilder to create a responsive grid
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth > 500;
-                      return GridView.count(
-                        crossAxisCount: isWide
-                            ? 4
-                            : 2, // 4 items in a row on wide screens, 2 on narrow
-                        mainAxisSpacing: 20,
-                        crossAxisSpacing: 20,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back,
+                                color: Colors.white),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'Modes',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Responsive Grid/List
+                      GridView.count(
+                        crossAxisCount:
+                            isNarrow ? 1 : 2, // 1 col for phone, 2 for tablet
+                        mainAxisSpacing: 15,
+                        crossAxisSpacing: 15,
                         shrinkWrap: true,
-                        childAspectRatio:
-                            0.8, // Adjust aspect ratio to provide more height
                         physics: const NeverScrollableScrollPhysics(),
-                        children: <Widget>[
+                        // Dynamic aspect ratio:
+                        // Narrow (List view) needs wide cards (~2.2)
+                        // Wide (Grid view) needs squarish cards (~0.85)
+                        childAspectRatio: isNarrow ? 2.2 : 0.85,
+                        children: [
                           _buildDialogOption(
                             context: context,
                             iconPath: 'assets/xBoard.png',
                             label: 'X Board',
                             description:
-                                'Turn screen into a digital whiteboard. Write, draw, and explain effortlessly for interactive lessons, brainstorming sessions, or presentations.',
+                                'Turn screen into a digital whiteboard. Write and draw effortlessly.',
                             onTap: () =>
                                 Navigator.of(context).pop(DeviceAction.xBoard),
+                            isNarrow: isNarrow,
                           ),
                           _buildDialogOption(
                             context: context,
                             iconPath: 'assets/xCast.png',
                             label: 'X Cast',
                             description:
-                                'Cast content from your tablet directly onto xWell. Access lessons, materials, and media for an engaging big-well experience.',
+                                'Cast content from your tablet directly onto xWall.',
                             onTap: () =>
                                 Navigator.of(context).pop(DeviceAction.xCast),
+                            isNarrow: isNarrow,
                           ),
                           _buildDialogOption(
                             context: context,
                             iconPath: 'assets/xCtrl.png',
                             label: 'X Ctrl',
                             description:
-                                'Take full control with keyboard and mouse. Navigate, manage, and interact with content smoothly on xWell.',
+                                'Take full control with keyboard and mouse.',
                             onTap: () =>
                                 Navigator.of(context).pop(DeviceAction.xCtrl),
+                            isNarrow: isNarrow,
                           ),
                           _buildDialogOption(
                             context: context,
                             iconPath: 'assets/xCtrlView.png',
-                            label: 'X Ctrl (vue)',
+                            label: 'X Ctrl (Vue)',
                             description:
-                                'Mirror and control xWell from your tablet.',
+                                'Mirror and control xWall from your tablet.',
                             onTap: () => Navigator.of(context)
                                 .pop(DeviceAction.xCtrlView),
+                            isNarrow: isNarrow,
                           ),
                         ],
-                      );
-                    },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -114,53 +136,106 @@ Future<DeviceAction?> showXConnectOptionsDialog(BuildContext context) {
   );
 }
 
-// A helper widget to create each image option to avoid code repetition.
+// Reusable widget that changes layout based on screen width
 Widget _buildDialogOption({
   required BuildContext context,
   required String iconPath,
   required String label,
   required String description,
   required VoidCallback onTap,
+  required bool isNarrow, // Pass layout state
 }) {
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(12),
-    child: Container(
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      splashColor: Colors.white.withOpacity(0.1),
+      highlightColor: Colors.white.withOpacity(0.05),
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        // Switch Layout: Row for Phone, Column for Tablet
+        child: isNarrow
+            ? _buildMobileLayout(iconPath, label, description)
+            : _buildTabletLayout(iconPath, label, description),
       ),
-      child: SingleChildScrollView(
-        // Added this widget to prevent overflow
+    ),
+  );
+}
+
+// 1. Mobile Layout (Horizontal Row) - Saves vertical space
+Widget _buildMobileLayout(String iconPath, String label, String description) {
+  return Row(
+    children: [
+      Image.asset(iconPath, width: 60, height: 60, fit: BoxFit.contain),
+      const SizedBox(width: 15),
+      Expanded(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.asset(iconPath,
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover), // Use a real icon here
             Text(
               label,
-              textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               description,
-              textAlign: TextAlign.center,
-              style:
-                  TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 8),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 12,
+              ),
             ),
           ],
         ),
       ),
-    ),
+    ],
+  );
+}
+
+// 2. Tablet Layout (Vertical Column) - Better for grids
+Widget _buildTabletLayout(String iconPath, String label, String description) {
+  return Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Expanded(
+        flex: 3,
+        child: Image.asset(iconPath, fit: BoxFit.contain),
+      ),
+      const SizedBox(height: 10),
+      Text(
+        label,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 5),
+      Flexible(
+        child: Text(
+          description,
+          textAlign: TextAlign.center,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+            fontSize: 12,
+          ),
+        ),
+      ),
+    ],
   );
 }
