@@ -1112,13 +1112,27 @@ class DeviceSelectionScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Devices',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isSmallScreen ? 20 : 24,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Devices',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isSmallScreen ? 20 : 24,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () {
+                                    _deviceDiscoveryController
+                                        .refreshDiscovery();
+                                  },
+                                  icon: const Icon(Icons.refresh,
+                                      color: Colors.white),
+                                  tooltip: 'Refresh',
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 20),
                             Expanded(

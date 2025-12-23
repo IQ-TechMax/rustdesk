@@ -41,7 +41,6 @@ late List<String> kBootArgs;
 Future<void> main(List<String> args) async {
   earlyAssert();
   WidgetsFlutterBinding.ensureInitialized();
-  Get.put(XConnectTcpManager());
 
   debugPrint("launch args: $args");
   kBootArgs = List.from(args);
@@ -135,6 +134,7 @@ Future<void> initEnv(String appType) async {
 }
 
 void runMainApp(bool startService) async {
+  Get.put(XConnectTcpManager());
   // register uni links
   await initEnv(kAppTypeMain);
   checkUpdate();
@@ -184,6 +184,7 @@ void runMainApp(bool startService) async {
 }
 
 void runMobileApp() async {
+  Get.put(XConnectTcpManager());
   await initEnv(kAppTypeMain);
   checkUpdate();
   if (isAndroid) androidChannelInit();

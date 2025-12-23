@@ -97,7 +97,7 @@ Future<DeviceAction?> showXConnectOptionsDialog(BuildContext context) {
                             iconPath: 'assets/xCast.png',
                             label: 'X Cast',
                             description:
-                                'Cast content from your tablet directly onto xWall.',
+                                'Cast content from your tablet directly onto Xwall.',
                             onTap: () =>
                                 Navigator.of(context).pop(DeviceAction.xCast),
                             isNarrow: isNarrow,
@@ -117,7 +117,7 @@ Future<DeviceAction?> showXConnectOptionsDialog(BuildContext context) {
                             iconPath: 'assets/xCtrlView.png',
                             label: 'X Ctrl (Vue)',
                             description:
-                                'Mirror and control xWall from your tablet.',
+                                'Mirror and control Xwall from your tablet.',
                             onTap: () => Navigator.of(context)
                                 .pop(DeviceAction.xCtrlView),
                             isNarrow: isNarrow,

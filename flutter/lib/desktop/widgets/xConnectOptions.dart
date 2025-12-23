@@ -92,7 +92,7 @@ Future<DeviceAction?> showDesktopXConnectOptionsDialog(BuildContext context) {
                                 'assets/xCast.png', // Ensure these assets exist
                             label: 'X Cast',
                             description:
-                                'Cast content from this PC directly onto xWall.',
+                                'Cast content from this PC directly onto Xwall.',
                             onTap: () =>
                                 Navigator.of(context).pop(DeviceAction.xCast),
                             isNarrow: isNarrow,
@@ -103,7 +103,7 @@ Future<DeviceAction?> showDesktopXConnectOptionsDialog(BuildContext context) {
                                 'assets/xCtrlView.png', // Ensure these assets exist
                             label: 'X Ctrl (View)',
                             description:
-                                'Mirror and control xWall from this PC.',
+                                'Mirror and control Xwall from this PC.',
                             onTap: () => Navigator.of(context)
                                 .pop(DeviceAction.xCtrlView),
                             isNarrow: isNarrow,

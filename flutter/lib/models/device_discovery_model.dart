@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart'; // Ensure this import path is correct
+import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart';
 
 class Device {
   final String ip;
@@ -85,10 +85,10 @@ class DeviceDiscoveryController extends GetxController {
   // 1. Send requests frequently (every 2s) so devices respond often.
   final Duration _broadcastInterval = const Duration(seconds: 2);
 
-  // 2. Check for dead devices often (every 3s).
-  final Duration _checkInterval = const Duration(seconds: 3);
+  // 2. Check for dead devices often (every 2s).
+  final Duration _checkInterval = const Duration(seconds: 2);
 
-  // 3. Wait longer before removing (8s).
+  // 3. Wait longer before removing (6s).
   // This allows missing ~3 packets before the device disappears from UI.
   final int _deviceTimeoutSeconds = 8;
 

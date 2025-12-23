@@ -101,30 +101,34 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       isSharedPassword: widget.isSharedPassword,
       forceRelay: widget.forceRelay,
     );
-    // lets keep these comments for mouse mode enablement reference
-    // if (widget.isViewOnly) {
-    //   // Configure for xCtrlView
-    //   debugPrint(
-    //       '[RemotePage] xCtrlView mode detected. Setting input to Touch Mode.');
-    //   if (!gFFI.ffiModel.touchMode) {
-    //     gFFI.ffiModel.toggleTouchMode();
-    //     final v = gFFI.ffiModel.touchMode ? 'Y' : '';
-    //     bind.sessionPeerOption(
-    //         sessionId: sessionId, name: kOptionTouchMode, value: v);
-    //   }
-    // } else if (widget.isBlankScreen) {
-    //   // Configure for xCtrl (blank screen)
-    //   debugPrint(
-    //       '[RemotePage] xCtrl (blank screen) mode detected. Defaulting to Mouse Mode.');
-    //   // MouseMode is the default, so we just ensure it's not touch.
-    //   if (gFFI.ffiModel.touchMode) {
-    //     gFFI.ffiModel.toggleTouchMode();
-    //     final v = gFFI.ffiModel.touchMode ? 'Y' : '';
-    //     bind.sessionPeerOption(
-    //         sessionId: sessionId, name: kOptionTouchMode, value: v);
-    //   }
-    // }
-    openKeyboard();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      openKeyboard();
+
+      // lets keep these comments for mouse mode enablement reference
+      if (widget.isViewOnly) {
+        // Configure for xCtrlView
+        debugPrint(
+            '[RemotePage] xCtrlView mode detected. Setting input to Touch Mode.');
+        if (!gFFI.ffiModel.touchMode) {
+          gFFI.ffiModel.toggleTouchMode();
+          final v = gFFI.ffiModel.touchMode ? 'Y' : '';
+          bind.sessionPeerOption(
+              sessionId: sessionId, name: kOptionTouchMode, value: v);
+        }
+      } else if (widget.isBlankScreen) {
+        // Configure for xCtrl (blank screen)
+        debugPrint(
+            '[RemotePage] xCtrl (blank screen) mode detected. Defaulting to Mouse Mode.');
+        // MouseMode is the default, so we just ensure it's not touch.
+        if (gFFI.ffiModel.touchMode) {
+          gFFI.ffiModel.toggleTouchMode();
+          final v = gFFI.ffiModel.touchMode ? 'Y' : '';
+          bind.sessionPeerOption(
+              sessionId: sessionId, name: kOptionTouchMode, value: v);
+        }
+      }
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);

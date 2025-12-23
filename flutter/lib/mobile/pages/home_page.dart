@@ -381,6 +381,15 @@ class DeviceSelectionScreen extends StatelessWidget {
                                       ),
                                     ),
                                     // Optional: Add a refresh icon here if needed
+                                    IconButton(
+                                      onPressed: () {
+                                        _deviceDiscoveryController
+                                            .refreshDiscovery();
+                                      },
+                                      icon: const Icon(Icons.refresh,
+                                          color: Colors.white),
+                                      tooltip: 'Refresh',
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 15),
