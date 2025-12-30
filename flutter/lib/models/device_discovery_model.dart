@@ -96,7 +96,7 @@ class DeviceDiscoveryController extends GetxController {
   // 2. Check for dead devices often (every 2s).
   final Duration _checkInterval = const Duration(seconds: 2);
 
-  // 3. Wait longer before removing (6s).
+  // 3. Wait longer before removing (5s).
   // This allows missing ~2 packets before the device disappears from UI.
   final int _deviceTimeoutSeconds = 5;
 
