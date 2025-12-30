@@ -733,11 +733,11 @@ Future<void> _startDiscovery(
         try {
           final sessionListId = await DesktopMultiWindow.invokeMethod(WindowType.RemoteDesktop.index, kWindowEventGetSessionIdList, null);
 
-          debugPrint('Current outgoing session list: $sessionListId');
-
           if (sessionListId == null || sessionListId.isEmpty) {
             throw 'No Active Outgoing Sessions';
           }
+
+          debugPrint('Current outgoing session list: $sessionListId');
 
           List connectedRemoteIps = [];
 
