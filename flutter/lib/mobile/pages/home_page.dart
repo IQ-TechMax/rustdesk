@@ -301,8 +301,11 @@ class DeviceSelectionScreen extends StatelessWidget {
         final double screenHeight = constraints.maxHeight;
 
         // Breakpoints
-        final bool isTablet = screenWidth >= 600;
+        final bool isTablet = screenWidth >= 850;
         final bool isLandscapePhone = !isTablet && (screenWidth > screenHeight);
+
+        debugPrint(
+            '[UI] Screen Size: ${screenWidth}x$screenHeight | isTablet: $isTablet | isLandscapePhone: $isLandscapePhone');
 
         // Dynamic Values
         final double logoSize =
