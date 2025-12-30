@@ -728,13 +728,41 @@ Future<void> _startDiscovery(
 
         final deviceName = await bind.getXConnectDeviceName();
 
+        bool isConnected = false;
+
+        try {
+          final sessionListId = await DesktopMultiWindow.invokeMethod(WindowType.RemoteDesktop.index, kWindowEventGetSessionIdList, null);
+
+          debugPrint('Current outgoing session list: $sessionListId');
+
+          if (sessionListId == null || sessionListId.isEmpty) {
+            throw 'No Active Outgoing Sessions';
+          }
+
+          List connectedRemoteIps = [];
+
+          for (final peerIdAndSessionId in sessionListId.split(';')) {
+            final parts = peerIdAndSessionId.split(',');
+            connectedRemoteIps.add(parts[0]);
+          }
+
+          if (connectedRemoteIps.contains('$remoteAddr:$XCONNECT_PORT')) {
+            isConnected = true;
+          }
+
+        } catch (e) {
+          debugPrint('Error fetching outgoing sessions list: $e');
+          isConnected = false;
+        }
+
         _respondViaTcp(remoteAddr, SHARED_PORT, {
       'type': 'iam_alive',
       'ip': localIp ?? '0.0.0.0',
-      'port': SHARED_PORT, 
-      'session_id': currentSessionId,
-      'password': currentPassword,
-      'device_id': deviceName != '' && deviceName != null ? deviceName : deviceId,
+      'port': XCONNECT_PORT, 
+      'is_connected': isConnected,
+      // 'session_id': currentSessionId,
+      // 'password': currentPassword,
+      'device_id': deviceName != null && deviceName != '' ? deviceName : deviceId,
     });
       }
     } catch (e) {

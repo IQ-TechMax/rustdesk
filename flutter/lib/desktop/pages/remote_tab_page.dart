@@ -513,6 +513,9 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
       }
     } else if (call.method == kWindowEventSetFullscreen) {
       stateGlobal.setFullscreen(call.arguments == 'true');
+    } else if ( call.method == kWindowEventRemoveRemoteByPeerId) {
+      final peerId = call.arguments;
+      tabController.closeBy(peerId);
     }
     _update_remote_count();
     return returnValue;

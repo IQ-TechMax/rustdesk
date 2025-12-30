@@ -2441,7 +2441,7 @@ connect(BuildContext context, String id,
     String? password,
     String? connToken,
     bool? isSharedPassword,
-    bool isAutoConnect = false}) async {
+    }) async {
   if (id == '') return;
   if (!isDesktop || desktopType == DesktopType.main) {
     try {

@@ -4,10 +4,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:developer';
 
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/main.dart'; // keep if connect() and globalKey are used
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/state_model.dart';
+import 'package:flutter_hbb/utils/multi_window_manager.dart';
 
 
 const int _tcpBindRetryCount = 3;
@@ -102,17 +105,16 @@ class TcpListener {
         _log('[TC] IP: $ip, PORT: $port');
 
         if (ip != null && port != null && password != null) {
-          // Ensure UI thread/context is used for connect
-          Future.delayed(Duration.zero, () {
             try {
-              connect(globalKey.currentContext!, '$ip:$port',
-                  password: password, isAutoConnect: true);
-              stateGlobal.setFullscreen(true);
+              await connect(globalKey.currentContext!, '$ip:$port',
+                  password: password);
+              
+              await DesktopMultiWindow.invokeMethod(WindowType.RemoteDesktop.index, kWindowEventSetFullscreen, 'true');
+              
               _log('[TC] Auto connect triggered to $ip:$port');
             } catch (e) {
               _log('[TC] Auto connect error: $e');
             }
-          });
         } else {
           _log('[TC] Missing fields in TC message.');
         }
@@ -156,6 +158,14 @@ class TcpListener {
           _log('[GC] Sent GC response: $gcResponse');
         } catch (e) {
           _log('❌Failed to send GC response: $e');
+        }
+      }
+
+      else if ( action == 'CLOSE_CONNECTION') {
+        try {
+          DesktopMultiWindow.invokeMethod(WindowType.RemoteDesktop.index, kWindowEventRemoveRemoteByPeerId, '${client.remoteAddress.address}:$XCONNECT_PORT');
+        } catch (e) {
+          _log('❌Failed to close outgoing connection window: $e');
         }
       }
 
