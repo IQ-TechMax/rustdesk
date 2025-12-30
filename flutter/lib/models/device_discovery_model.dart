@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_hbb/common.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
@@ -18,7 +19,7 @@ class Device {
   final RxnString deviceId;
   final RxnBool isConnected;
   final Rx<ConnectionType?> connectionType;
-  final RxnString sessionId;
+  final Rx<SessionID?> sessionId;
   final Rx<DateTime> lastSeen;
 
   Device({
@@ -27,12 +28,12 @@ class Device {
     String? deviceId,
     ConnectionType? connectionType,
     bool? isConnected,
-    String? sessionId,
+    SessionID? sessionId,
   })  : deviceId = RxnString(deviceId),
         lastSeen = DateTime.now().obs,
         isConnected = RxnBool(isConnected ?? false),
         connectionType = Rx<ConnectionType?>(connectionType),
-        sessionId = RxnString(sessionId);
+        sessionId = Rx<SessionID?>(sessionId);
 
   factory Device.fromJson(Map<String, dynamic> json, String ip, int port) {
     return Device(
@@ -90,15 +91,15 @@ class DeviceDiscoveryController extends GetxController {
   final String _anybodyAliveMessage = '{"type": "anybody_alive"}';
 
   // TIMING STRATEGY: Fast Pulse, Slow Decay
-  // 1. Send requests frequently (every 2s) so devices respond often.
+  // 1. Send requests frequently (every 3s) so devices respond often.
   final Duration _broadcastInterval = const Duration(seconds: 2);
 
-  // 2. Check for dead devices often (every 2s).
+  // 2. Check for dead devices often (every 3s).
   final Duration _checkInterval = const Duration(seconds: 2);
 
-  // 3. Wait longer before removing (5s).
-  // This allows missing ~2 packets before the device disappears from UI.
-  final int _deviceTimeoutSeconds = 5;
+  // 3. Wait longer before removing (7s).
+  // This allows missing ~3 packets before the device disappears from UI.
+  final int _deviceTimeoutSeconds = 7;
 
   @override
   void onInit() {
@@ -206,6 +207,15 @@ class DeviceDiscoveryController extends GetxController {
         json['connection_type'] = 'outgoing';
         json['session_id'] = sessionIdLookup['$deviceIp:$devicePort'] ?? null;
       }
+    } else if (Platform.isAndroid &&
+        gFFI.id != null &&
+        gFFI.id == '$deviceIp:$devicePort') {
+      debugPrint(
+          '[Discovery] Device $deviceIp is connected via remote window.');
+      json['is_connected'] = true;
+      json['connection_type'] = 'outgoing';
+      json['session_id'] =
+          gFFI.sessionId; // Session ID not tracked on Android native
     }
 
     if (existingIndex != -1) {
@@ -234,6 +244,16 @@ class DeviceDiscoveryController extends GetxController {
     if (isLoading.value) return;
     isLoading.value = true;
     statusText.value = 'Finding devices...';
+    // Just to turn off the "Loading" spinner if nothing is found initially
+    Future.delayed(const Duration(seconds: 5), () {
+      if (isLoading.value) {
+        isLoading.value = false;
+        if (discoveredDevices.isEmpty) {
+          statusText.value = 'No devices available';
+        }
+      }
+    });
+
     clearDevices();
 
     // Android specific: Acquire Multicast Lock to allow UDP broadcast reception
@@ -246,23 +266,7 @@ class DeviceDiscoveryController extends GetxController {
       }
     }
 
-    await _startDiscoveryService();
-  }
-
-  Future<void> _startDiscoveryService() async {
-    // 1. Start UDP Broadcast
     await _startUdpBroadcaster();
-
-    // 2. Initial UI Timeout logic
-    // Just to turn off the "Loading" spinner if nothing is found initially
-    Future.delayed(const Duration(seconds: 5), () {
-      if (isLoading.value) {
-        isLoading.value = false;
-        if (discoveredDevices.isEmpty) {
-          statusText.value = 'No devices available';
-        }
-      }
-    });
   }
 
   // --- UDP BROADCASTER ---
@@ -284,17 +288,14 @@ class DeviceDiscoveryController extends GetxController {
     _broadcastTimer = Timer.periodic(_broadcastInterval, (timer) {
       _sendBroadcast();
     });
-
-    // BURST MODE: Send 3 packets rapidly at start to ensure immediate discovery
+    // Initial immediate broadcast
     _sendBroadcast();
-    Future.delayed(const Duration(milliseconds: 400), _sendBroadcast);
-    Future.delayed(const Duration(milliseconds: 800), _sendBroadcast);
   }
 
   void _sendBroadcast() {
     if (_broadcastSocket == null) return;
     try {
-      // debugPrint('[UDP] 🛰️ Ping...');
+      debugPrint('[UDP] 🛰️ Ping...');
       _broadcastSocket?.send(
         utf8.encode(_anybodyAliveMessage),
         InternetAddress(_broadcastAddress),

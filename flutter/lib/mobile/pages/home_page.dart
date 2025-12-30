@@ -497,6 +497,24 @@ class _DeviceCardState extends State<DeviceCard> {
   final RxBool isConnecting = false.obs;
   final RxBool isDisconnecting = false.obs;
 
+  Widget _buildStatusChip(String label, Color color, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // 2. Adaptive Icon Size
@@ -656,29 +674,24 @@ class _DeviceCardState extends State<DeviceCard> {
                       if (isConnecting.value) {
                         isConnecting.value = false;
                       }
-                      return Text("Disconnect",
-                          style: TextStyle(
-                              color: Colors.redAccent,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold));
+                      if (isDisconnecting.value) {
+                        return _buildStatusChip("Disconnecting...", Colors.grey,
+                            Colors.grey.withOpacity(0.2));
+                      }
+                      return _buildStatusChip("Disconnect", Colors.redAccent,
+                          Colors.redAccent.withOpacity(0.15));
                     } else {
                       if (isDisconnecting.value) {
                         isDisconnecting.value = false;
                       }
 
                       if (isConnecting.value) {
-                        return const Text("Connecting...",
-                            style:
-                                TextStyle(color: Colors.yellow, fontSize: 13));
+                        return _buildStatusChip("Connecting...", Colors.orange,
+                            Colors.orange.withOpacity(0.15));
                       }
 
-                      return Text(
-                        'Online',
-                        style: TextStyle(
-                          color: Colors.greenAccent,
-                          fontSize: 13,
-                        ),
-                      );
+                      return _buildStatusChip("Online", Colors.green,
+                          Colors.green.withOpacity(0.15));
                     }
                   }),
                 ],
