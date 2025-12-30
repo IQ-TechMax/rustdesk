@@ -492,11 +492,7 @@ class DeviceCard extends StatefulWidget {
 
 class _DeviceCardState extends State<DeviceCard> {
   final RxBool isConnecting = false.obs;
-
-  bool get isAlreadyConnected {
-    return gFFI.serverModel.clients
-        .any((client) => client.peerId == '${widget.device.ip}:12345');
-  }
+  final RxBool isDisconnecting = false.obs;
 
   @override
   Widget build(BuildContext context) {
@@ -506,42 +502,59 @@ class _DeviceCardState extends State<DeviceCard> {
 
     return InkWell(
       onTap: () async {
-        if (isAlreadyConnected) return;
-
-        final selectedAction = await showXConnectOptionsDialog(context);
-
-        if (selectedAction != null) {
-          isConnecting.value = true;
+        if (widget.device.isConnected.value == true) {
           try {
-            switch (selectedAction) {
-              case DeviceAction.xBoard:
-                await _shareAndroidToLinux(widget.device);
-                const String whiteboardAppPackageName = "cn.readpad.whiteboard";
-                try {
-                  if (!await launchUrl(
-                      Uri.parse('android-app://$whiteboardAppPackageName'))) {
-                    await gFFI.invokeMethod("launch_another_app",
-                        {"package_name": whiteboardAppPackageName});
-                  }
-                } catch (e) {
-                  debugPrint('[UI] Failed to launch app: $e');
-                }
-                break;
-              case DeviceAction.xCast:
-                await _shareAndroidToLinux(widget.device);
-                break;
-              case DeviceAction.xCtrl:
-                await _shareLinuxToAndroid(widget.device, isBlankScreen: true);
-                break;
-              case DeviceAction.xCtrlView:
-                await _shareLinuxToAndroid(widget.device, isViewOnly: true);
-                break;
+            if (isDisconnecting.value) {
+              return; // Prevent multiple taps while disconnecting
             }
-            if (mounted) setState(() {});
+            isDisconnecting.value = true;
+            if (widget.device.connectionType.value == ConnectionType.incoming) {
+              await sendTCPRequest(
+                  widget.device.ip, {"action": "CLOSE_CONNECTION"});
+            }
           } catch (e) {
-            debugPrint('[UI] Error: $e');
-          } finally {
-            isConnecting.value = false;
+            debugPrint('[UI] Disconnection error: $e');
+          }
+        } else {
+          if (isConnecting.value) {
+            return; // Prevent multiple taps while connecting
+          }
+
+          final selectedAction = await showXConnectOptionsDialog(context);
+
+          if (selectedAction != null) {
+            isConnecting.value = true;
+            try {
+              switch (selectedAction) {
+                case DeviceAction.xBoard:
+                  await _shareAndroidToLinux(widget.device);
+                  const String whiteboardAppPackageName =
+                      "cn.readpad.whiteboard";
+                  try {
+                    if (!await launchUrl(
+                        Uri.parse('android-app://$whiteboardAppPackageName'))) {
+                      await gFFI.invokeMethod("launch_another_app",
+                          {"package_name": whiteboardAppPackageName});
+                    }
+                  } catch (e) {
+                    debugPrint('[UI] Failed to launch app: $e');
+                  }
+                  break;
+                case DeviceAction.xCast:
+                  await _shareAndroidToLinux(widget.device);
+                  break;
+                case DeviceAction.xCtrl:
+                  await _shareLinuxToAndroid(widget.device,
+                      isBlankScreen: true);
+                  break;
+                case DeviceAction.xCtrlView:
+                  await _shareLinuxToAndroid(widget.device, isViewOnly: true);
+                  break;
+              }
+              if (mounted) setState(() {});
+            } catch (e) {
+              debugPrint('[UI] Error: $e');
+            }
           }
         }
       },
@@ -636,33 +649,34 @@ class _DeviceCardState extends State<DeviceCard> {
                   ),
                   const SizedBox(height: 4),
                   Obx(() {
-                    if (isAlreadyConnected) {
-                      return GestureDetector(
-                        onTap: () => gFFI.serverModel.closeAll(),
-                        child: const Text("Disconnect",
-                            style: TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold)),
+                    if (widget.device.isConnected.value == true) {
+                      if (isConnecting.value) {
+                        isConnecting.value = false;
+                      }
+                      return Text("Disconnect",
+                          style: TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold));
+                    } else {
+                      if (isDisconnecting.value) {
+                        isDisconnecting.value = false;
+                      }
+
+                      if (isConnecting.value) {
+                        return const Text("Connecting...",
+                            style:
+                                TextStyle(color: Colors.yellow, fontSize: 13));
+                      }
+
+                      return Text(
+                        'Online',
+                        style: TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 13,
+                        ),
                       );
                     }
-
-                    if (isConnecting.value) {
-                      return const Text("Connecting...",
-                          style: TextStyle(color: Colors.yellow, fontSize: 13));
-                    }
-
-                    // Status Logic (Example)
-                    bool isBusy = widget.device.tcpStatus.value == 'Busy';
-
-                    return Text(
-                      isBusy ? 'Busy' : 'Online',
-                      style: TextStyle(
-                        color:
-                            isBusy ? Colors.orangeAccent : Colors.greenAccent,
-                        fontSize: 13,
-                      ),
-                    );
                   }),
                 ],
               ),
@@ -704,7 +718,7 @@ Future<void> _shareAndroidToLinux(Device device) async {
 
   debugPrint('[TC] Sending TC info to ${device.ip}:${device.port}: $tcPayload');
 
-  await XConnectTcpManager.to.sendRequest(device.ip, tcPayload);
+  await sendTCPRequest(device.ip, tcPayload);
   debugPrint('[TC] TC info sent to ${device.ip}:${device.port}');
 }
 
@@ -712,8 +726,7 @@ Future<void> _shareLinuxToAndroid(Device device,
     {bool isBlankScreen = false, bool isViewOnly = false}) async {
   debugPrint('[UI] GC button clicked for ${device.schoolName}');
 
-  final response = await XConnectTcpManager.to
-      .sendRequest(device.ip, {"action": "GC_REQUEST"});
+  final response = await sendTCPRequest(device.ip, {"action": "GC_REQUEST"});
 
   debugPrint('[GC] ✅ Received GC_ACK - $response');
 

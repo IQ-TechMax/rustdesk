@@ -28,7 +28,6 @@ import 'consts.dart';
 import 'mobile/pages/home_page.dart';
 import 'mobile/pages/server_page.dart';
 import 'models/platform_model.dart';
-import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart';
 
 import 'package:flutter_hbb/plugin/handlers.dart'
     if (dart.library.html) 'package:flutter_hbb/web/plugin/handlers.dart';
@@ -134,7 +133,6 @@ Future<void> initEnv(String appType) async {
 }
 
 void runMainApp(bool startService) async {
-  Get.put(XConnectTcpManager());
   // register uni links
   await initEnv(kAppTypeMain);
   checkUpdate();
@@ -184,7 +182,6 @@ void runMainApp(bool startService) async {
 }
 
 void runMobileApp() async {
-  Get.put(XConnectTcpManager());
   await initEnv(kAppTypeMain);
   checkUpdate();
   if (isAndroid) androidChannelInit();

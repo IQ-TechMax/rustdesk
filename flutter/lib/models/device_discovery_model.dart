@@ -4,53 +4,61 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/utils/xconnect_tcp_manager.dart';
+import 'package:flutter_hbb/utils/multi_window_manager.dart';
+import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:flutter_hbb/consts.dart';
+
+enum ConnectionType { incoming, outgoing }
 
 class Device {
   final String ip;
   final int port;
 
   // Rx types for reactivity
-  final RxnString sessionId;
-  final RxnString password;
   final RxnString deviceId;
-  final RxnString name;
-  final RxString tcpStatus;
+  final RxnBool isConnected;
+  final Rx<ConnectionType?> connectionType;
+  final RxnString sessionId;
   final Rx<DateTime> lastSeen;
 
   Device({
     required this.ip,
     required this.port,
-    String? sessionId,
-    String? password,
     String? deviceId,
-    String? name,
-    String initialTcpStatus = 'Ready',
-  })  : sessionId = RxnString(sessionId),
-        password = RxnString(password),
-        deviceId = RxnString(deviceId),
-        name = RxnString(name),
-        tcpStatus = initialTcpStatus.obs,
-        lastSeen = DateTime.now().obs;
+    ConnectionType? connectionType,
+    bool? isConnected,
+    String? sessionId,
+  })  : deviceId = RxnString(deviceId),
+        lastSeen = DateTime.now().obs,
+        isConnected = RxnBool(isConnected ?? false),
+        connectionType = Rx<ConnectionType?>(connectionType),
+        sessionId = RxnString(sessionId);
 
   factory Device.fromJson(Map<String, dynamic> json, String ip, int port) {
     return Device(
       ip: ip,
       port: port,
-      sessionId: json['session_id'],
-      password: json['password'],
       deviceId: json['device_id'],
-      name: json['name'],
-      initialTcpStatus: 'Ready',
+      isConnected: json['is_connected'] == true ? true : false,
+      connectionType: json['connection_type'] == 'incoming'
+          ? ConnectionType.incoming
+          : json['connection_type'] == 'outgoing'
+              ? ConnectionType.outgoing
+              : null,
+      sessionId: json['session_id'],
     );
   }
 
   // Efficiently update existing device instead of replacing object
   void updateFromJson(Map<String, dynamic> json) {
-    sessionId.value = json['session_id'];
-    password.value = json['password'];
     deviceId.value = json['device_id'];
-    name.value = json['name'];
+    isConnected.value = json['is_connected'] == true ? true : false;
+    connectionType.value = json['connection_type'] == 'incoming'
+        ? ConnectionType.incoming
+        : json['connection_type'] == 'outgoing'
+            ? ConnectionType.outgoing
+            : null;
+    sessionId.value = json['session_id'];
     // CRITICAL: Always update timestamp to prevent removal
     lastSeen.value = DateTime.now();
   }
@@ -59,7 +67,7 @@ class Device {
     if (deviceId.value != null && deviceId.value!.length > 6) {
       return deviceId.value!.substring(0, deviceId.value!.length);
     }
-    return deviceId.value ?? name.value ?? ip;
+    return deviceId.value ?? ip;
   }
 }
 
@@ -71,7 +79,7 @@ class DeviceDiscoveryController extends GetxController {
   RxString statusText = 'Initializing...'.obs;
 
   RawDatagramSocket? _broadcastSocket;
-  StreamSubscription? _messageSubscription;
+  ServerSocket? _tcpListenerSocket;
 
   Timer? _broadcastTimer;
   Timer? _livenessTimer;
@@ -89,8 +97,8 @@ class DeviceDiscoveryController extends GetxController {
   final Duration _checkInterval = const Duration(seconds: 2);
 
   // 3. Wait longer before removing (6s).
-  // This allows missing ~3 packets before the device disappears from UI.
-  final int _deviceTimeoutSeconds = 8;
+  // This allows missing ~2 packets before the device disappears from UI.
+  final int _deviceTimeoutSeconds = 5;
 
   @override
   void onInit() {
@@ -98,12 +106,7 @@ class DeviceDiscoveryController extends GetxController {
     debugPrint('[UI] DeviceDiscoveryController initialized');
 
     // Listen for replies from devices (via TCP Manager)
-    _messageSubscription =
-        XConnectTcpManager.to.messageStream.listen((message) {
-      if (message['type'] == 'iam_alive') {
-        _handleIamAlive(message, message['remoteIp']);
-      }
-    });
+    _startTCPListener();
 
     // Reactive status text
     discoveredDevices.listen((devices) {
@@ -118,6 +121,104 @@ class DeviceDiscoveryController extends GetxController {
     // Start the janitor process to remove old devices
     _livenessTimer =
         Timer.periodic(_checkInterval, (timer) => _checkDeviceLiveness());
+  }
+
+  Future<void> _startTCPListener() async {
+    try {
+      _tcpListenerSocket = await ServerSocket.bind(
+          InternetAddress.anyIPv4, _sharedPort,
+          shared: true);
+      debugPrint('✅ TCP Server listening on port $_sharedPort');
+
+      _tcpListenerSocket!.listen((Socket client) {
+        debugPrint(
+            'Receiving self originated TCP request from client: ${client.remoteAddress.address}');
+        client.listen(
+          (data) {
+            try {
+              final responseStr = utf8.decode(data);
+              final Map<String, dynamic> json = jsonDecode(responseStr);
+              // Main server only handles broadcast-like messages
+              if (json['transaction_id'] == null) {
+                _handleIamAlive(json);
+              }
+
+              debugPrint('Received TCP message details : $json');
+            } catch (e) {
+              debugPrint('‼️ Error parsing data: $e');
+            }
+          },
+          onDone: () {
+            debugPrint('Successfully Received message from client');
+            client.destroy();
+          },
+          onError: (error) {
+            debugPrint('‼️ Socket error: $error');
+            client.destroy();
+          },
+        );
+      });
+    } catch (e) {
+      debugPrint('‼️ FATAL: Could not bind server to port $_sharedPort: $e');
+    }
+  }
+
+  void _handleIamAlive(Map<String, dynamic> json) async {
+    final deviceId = json['device_id'];
+    // Linux might send 0.0.0.0, so we use the actual TCP socket address
+    final deviceIp = json['ip'];
+    final devicePort = json['port'];
+
+    final existingIndex = discoveredDevices.indexWhere((d) => d.ip == deviceIp);
+
+    if (json['is_connected'] == true) {
+      json['is_connected'] = true;
+      json['connection_type'] = 'incoming';
+      json['session_id'] = null;
+    } else if (Platform.isWindows || Platform.isLinux) {
+      // Check if connected via remote window ( outgoing connection )
+      var connectedRemoteIps = [];
+      var sessionIdLookup = {};
+      try {
+        final sessionIdList = await DesktopMultiWindow.invokeMethod(
+            WindowType.RemoteDesktop.index, kWindowEventGetSessionIdList, null);
+
+        debugPrint('All sub window Session IDs: $sessionIdList');
+
+        if (sessionIdList == null || sessionIdList.isEmpty) {
+          throw 'No remote windows found';
+        }
+
+        for (final peerIdAndSessionId in sessionIdList.split(';')) {
+          final parts = peerIdAndSessionId.split(',');
+          sessionIdLookup[parts[0]] = parts[1];
+          connectedRemoteIps.add(parts[0]);
+        }
+      } catch (e) {
+        debugPrint('Error listing windows: $e');
+      }
+
+      final isConnected = connectedRemoteIps.contains('$deviceIp:$devicePort');
+      if (isConnected) {
+        debugPrint(
+            '[Discovery] Device $deviceIp is connected via remote window.');
+        json['is_connected'] = true;
+        json['connection_type'] = 'outgoing';
+        json['session_id'] = sessionIdLookup['$deviceIp:$devicePort'] ?? null;
+      }
+    }
+
+    if (existingIndex != -1) {
+      // Update existing device (refreshes lastSeen timestamp)
+      discoveredDevices[existingIndex].updateFromJson(json);
+      discoveredDevices.refresh();
+      // debugPrint('[Discovery] Updated device: $deviceIp');
+    } else {
+      // Add new device
+      final newDevice = Device.fromJson(json, deviceIp, devicePort);
+      discoveredDevices.add(newDevice);
+      debugPrint('[Discovery] Found new device: $deviceIp ($deviceId)');
+    }
   }
 
   void clearDevices() {
@@ -154,7 +255,7 @@ class DeviceDiscoveryController extends GetxController {
 
     // 2. Initial UI Timeout logic
     // Just to turn off the "Loading" spinner if nothing is found initially
-    Future.delayed(const Duration(seconds: 6), () {
+    Future.delayed(const Duration(seconds: 5), () {
       if (isLoading.value) {
         isLoading.value = false;
         if (discoveredDevices.isEmpty) {
@@ -162,27 +263,6 @@ class DeviceDiscoveryController extends GetxController {
         }
       }
     });
-  }
-
-  void _handleIamAlive(Map<String, dynamic> json, String remoteIp) {
-    final deviceId = json['device_id'];
-    // Linux might send 0.0.0.0, so we use the actual TCP socket address
-    final deviceIp =
-        (json['ip'] == '0.0.0.0' || json['ip'] == null) ? remoteIp : json['ip'];
-
-    final existingIndex = discoveredDevices.indexWhere((d) => d.ip == deviceIp);
-
-    if (existingIndex != -1) {
-      // Update existing device (refreshes lastSeen timestamp)
-      discoveredDevices[existingIndex].updateFromJson(json);
-      discoveredDevices.refresh();
-      // debugPrint('[Discovery] Updated device: $deviceIp');
-    } else {
-      // Add new device
-      final newDevice = Device.fromJson(json, deviceIp, 12345);
-      discoveredDevices.add(newDevice);
-      debugPrint('[Discovery] Found new device: $deviceIp ($deviceId)');
-    }
   }
 
   // --- UDP BROADCASTER ---
@@ -262,10 +342,10 @@ class DeviceDiscoveryController extends GetxController {
       }
     }
 
-    _messageSubscription?.cancel();
     _broadcastTimer?.cancel();
     _livenessTimer?.cancel();
     _broadcastSocket?.close();
+    _tcpListenerSocket?.close();
     super.onClose();
   }
 }

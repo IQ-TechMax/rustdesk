@@ -29,6 +29,7 @@ import 'package:window_size/window_size.dart' as window_size;
 import '../widgets/button.dart';
 import 'package:flutter_hbb/models/device_discovery_model.dart'; // Import the new model
 import 'package:flutter_hbb/desktop/widgets/xConnectOptions.dart';
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 
 Future<String?> getLocalIpFallback() async {
   try {
@@ -1206,6 +1207,7 @@ class DeviceCard extends StatefulWidget {
 class _DeviceCardState extends State<DeviceCard> {
   // Moving Rx variables to State so they don't reset when the parent widget rebuilds
   final RxBool isConnecting = false.obs;
+  final RxBool isDisconnecting = false.obs;
   final RxBool isHovered = false.obs;
 
   @override
@@ -1219,26 +1221,44 @@ class _DeviceCardState extends State<DeviceCard> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () async {
-          // Check if already connected via your global model
-          final bool isAlreadyConnected = gFFI.serverModel.clients
-              .any((c) => c.peerId == '${widget.device.ip}:12345');
-
-          if (isAlreadyConnected) return;
-
-          final selectedAction =
-              await showDesktopXConnectOptionsDialog(context);
-          if (selectedAction != null) {
-            isConnecting.value = true;
+          if (widget.device.isConnected.value == true) {
             try {
-              if (selectedAction == DeviceAction.xCast) {
-                await _shareAndroidToLinux(widget.device);
-              } else {
-                await _shareLinuxToAndroid(widget.device, isViewOnly: true);
+              if (isDisconnecting.value) {
+                return; // Prevent multiple taps while disconnecting
+              }
+              isDisconnecting.value = true;
+              if (widget.device.connectionType.value ==
+                  ConnectionType.outgoing) {
+                await DesktopMultiWindow.invokeMethod(
+                    WindowType.RemoteDesktop.index,
+                    kWindowEventRemoveRemoteByPeerId,
+                    '${widget.device.ip}:${widget.device.port}');
+                // For outgoing connections, we just close the session
+              } else if (widget.device.connectionType.value ==
+                  ConnectionType.incoming) {
+                await sendTCPRequest(
+                    widget.device.ip, {"action": "CLOSE_CONNECTION"});
               }
             } catch (e) {
-              debugPrint('Connection error: $e');
-            } finally {
-              isConnecting.value = false;
+              debugPrint('Disconnection error: $e');
+            }
+          } else {
+            if (isConnecting.value) {
+              return; // Prevent multiple taps while connecting
+            }
+            final selectedAction =
+                await showDesktopXConnectOptionsDialog(context);
+            if (selectedAction != null) {
+              isConnecting.value = true;
+              try {
+                if (selectedAction == DeviceAction.xCast) {
+                  await _shareAndroidToLinux(widget.device);
+                } else {
+                  await _shareLinuxToAndroid(widget.device, isViewOnly: true);
+                }
+              } catch (e) {
+                debugPrint('Connection error: $e');
+              }
             }
           }
         },
@@ -1337,28 +1357,35 @@ class _DeviceCardState extends State<DeviceCard> {
                   ),
                   const SizedBox(height: 4),
                   Obx(() {
-                    final bool isConnected = gFFI.serverModel.clients
-                        .any((c) => c.peerId == '${widget.device.ip}:12345');
+                    if (widget.device.isConnected.value == true) {
+                      if (isConnecting.value) {
+                        isConnecting.value = false;
+                      }
 
-                    if (isConnected) {
-                      return GestureDetector(
-                        onTap: () => gFFI.serverModel.closeAll(),
-                        child: const Text("Disconnect",
-                            style: TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold)),
+                      return Text(
+                          isDisconnecting.value
+                              ? "Disconnecting..."
+                              : "Disconnect",
+                          style: TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold));
+                    } else {
+                      if (isDisconnecting.value) {
+                        isDisconnecting.value = false;
+                      }
+
+                      return Text(
+                        isConnecting.value ? 'Connecting...' : 'Online',
+                        style: TextStyle(
+                          color: isConnecting.value
+                              ? Colors.yellow
+                              : Colors.greenAccent,
+                          fontSize: 13,
+                        ),
                       );
                     }
-                    return Text(
-                      isConnecting.value ? 'Connecting...' : 'Online',
-                      style: TextStyle(
-                        color: isConnecting.value
-                            ? Colors.yellow
-                            : Colors.greenAccent,
-                        fontSize: 13,
-                      ),
-                    );
+                    ;
                   }),
                 ],
               ),
@@ -1373,7 +1400,7 @@ class _DeviceCardState extends State<DeviceCard> {
 Future<void> _shareAndroidToLinux(Device device) async {
   // Logic remains similar to mobile, sends this device's info to the other device
   final localIp = await getLocalIpFallback();
-  final availablePort =
+  final XConnectPort =
       12345; // Use a different port than mobile if running on same network for testing
   final rustDeskPassword = gFFI.serverModel.serverPasswd.text;
 
@@ -1384,17 +1411,16 @@ Future<void> _shareAndroidToLinux(Device device) async {
   final tcPayload = {
     "action": "TC",
     "ip": localIp,
-    "port": availablePort,
+    "port": XConnectPort,
     "password": rustDeskPassword,
   };
-  await XConnectTcpManager.to.sendRequest(device.ip, tcPayload);
+  await sendTCPRequest(device.ip, tcPayload);
 }
 
 Future<void> _shareLinuxToAndroid(Device device,
     {bool isBlankScreen = false, bool isViewOnly = false}) async {
   // Logic remains similar to mobile, gets connection info from the other device and connects
-  final response = await XConnectTcpManager.to
-      .sendRequest(device.ip, {"action": "GC_REQUEST"});
+  final response = await sendTCPRequest(device.ip, {"action": "GC_REQUEST"});
   if (response != null && response['action'] == 'GC_RESPONSE') {
     final targetIp = response['ip'] as String;
     final targetPort = response['port'];
@@ -1407,6 +1433,9 @@ Future<void> _shareLinuxToAndroid(Device device,
         password: password,
         isViewOnly: isViewOnly,
         isBlankScreen: isBlankScreen);
+
+    await DesktopMultiWindow.invokeMethod(
+        WindowType.RemoteDesktop.index, kWindowEventSetFullscreen, 'true');
   } else {
     throw Exception('Failed to get GC_RESPONSE');
   }
