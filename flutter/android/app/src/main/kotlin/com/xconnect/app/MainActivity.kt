@@ -1,4 +1,4 @@
-package com.carriez.flutter_hbb
+package com.xconnect.app
 
 /**
  * Handle events from flutter
@@ -299,7 +299,7 @@ class MainActivity : FlutterActivity() {
         if (multicastLock == null) {
             val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager?
             wifi?.let {
-                multicastLock = it.createMulticastLock("rustdesk_discovery_lock")
+                multicastLock = it.createMulticastLock("xconnect_discovery_lock")
                 multicastLock?.setReferenceCounted(true)
             }
         }
