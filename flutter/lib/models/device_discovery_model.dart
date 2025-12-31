@@ -46,7 +46,8 @@ class Device {
           : json['connection_type'] == 'outgoing'
               ? ConnectionType.outgoing
               : null,
-      sessionId: json['session_id'],
+      sessionId:
+          json['session_id'] is String ? SessionID(json['session_id']) : null,
     );
   }
 
@@ -59,7 +60,8 @@ class Device {
         : json['connection_type'] == 'outgoing'
             ? ConnectionType.outgoing
             : null;
-    sessionId.value = json['session_id'];
+    sessionId.value =
+        json['session_id'] is String ? SessionID(json['session_id']) : null;
     // CRITICAL: Always update timestamp to prevent removal
     lastSeen.value = DateTime.now();
   }
