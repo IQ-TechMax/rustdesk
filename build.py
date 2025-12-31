@@ -292,7 +292,7 @@ def generate_control_file(version):
     control_file_path = "../res/DEBIAN/control"
     system2('/bin/rm -rf %s' % control_file_path)
 
-    content = """Package: rustdesk
+    content = """Package: xconnect
 Section: net
 Priority: optional
 Version: %s
@@ -322,35 +322,35 @@ def build_flutter_deb(version, features):
     os.chdir('flutter')
     system2('flutter build linux --release')
     system2('mkdir -p tmpdeb/usr/bin/')
-    system2('mkdir -p tmpdeb/usr/share/rustdesk')
-    system2('mkdir -p tmpdeb/etc/rustdesk/')
+    system2('mkdir -p tmpdeb/usr/share/xconnect')
+    system2('mkdir -p tmpdeb/etc/xconnect/')
     system2('mkdir -p tmpdeb/etc/pam.d/')
-    system2('mkdir -p tmpdeb/usr/share/rustdesk/files/systemd/')
+    system2('mkdir -p tmpdeb/usr/share/xconnect/files/systemd/')
     system2('mkdir -p tmpdeb/usr/share/icons/hicolor/256x256/apps/')
     system2('mkdir -p tmpdeb/usr/share/icons/hicolor/scalable/apps/')
     system2('mkdir -p tmpdeb/usr/share/applications/')
     system2('mkdir -p tmpdeb/usr/share/polkit-1/actions')
     system2('rm tmpdeb/usr/bin/rustdesk || true')
     system2(
-        f'cp -r {flutter_build_dir}/* tmpdeb/usr/share/rustdesk/')
+        f'cp -r {flutter_build_dir}/* tmpdeb/usr/share/xconnect/')
     system2(
-        'cp ../res/rustdesk.service tmpdeb/usr/share/rustdesk/files/systemd/')
+        'cp ../res/xconnect.service tmpdeb/usr/share/xconnect/files/systemd/')
     system2(
-        'cp ../res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/rustdesk.png')
+        'cp ../res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/xconnect.png')
     system2(
-        'cp ../res/scalable.svg tmpdeb/usr/share/icons/hicolor/scalable/apps/rustdesk.svg')
+        'cp ../res/scalable.svg tmpdeb/usr/share/icons/hicolor/scalable/apps/xconnect.svg')
     system2(
-        'cp ../res/rustdesk.desktop tmpdeb/usr/share/applications/rustdesk.desktop')
+        'cp ../res/xconnect.desktop tmpdeb/usr/share/applications/xconnect.desktop')
     system2(
-        'cp ../res/rustdesk-link.desktop tmpdeb/usr/share/applications/rustdesk-link.desktop')
+        'cp ../res/xconnect-link.desktop tmpdeb/usr/share/applications/xconnect-link.desktop')
     system2(
-        'cp ../res/startwm.sh tmpdeb/etc/rustdesk/')
+        'cp ../res/startwm.sh tmpdeb/etc/xconnect/')
     system2(
-        'cp ../res/xorg.conf tmpdeb/etc/rustdesk/')
+        'cp ../res/xorg.conf tmpdeb/etc/xconnect/')
     system2(
         'cp ../res/pam.d/rustdesk.debian tmpdeb/etc/pam.d/rustdesk')
     system2(
-        "echo \"#!/bin/sh\" >> tmpdeb/usr/share/rustdesk/files/polkit && chmod a+x tmpdeb/usr/share/rustdesk/files/polkit")
+        "echo \"#!/bin/sh\" >> tmpdeb/usr/share/xconnect/files/polkit && chmod a+x tmpdeb/usr/share/xconnect/files/polkit")
 
     system2('mkdir -p tmpdeb/DEBIAN')
     generate_control_file(version)
@@ -360,34 +360,34 @@ def build_flutter_deb(version, features):
 
     system2('/bin/rm -rf tmpdeb/')
     system2('/bin/rm -rf ../res/DEBIAN/control')
-    os.rename('rustdesk.deb', '../rustdesk-%s.deb' % version)
+    os.rename('rustdesk.deb', '../xconnect-%s.deb' % version)
     os.chdir("..")
 
 
 def build_deb_from_folder(version, binary_folder):
     os.chdir('flutter')
     system2('mkdir -p tmpdeb/usr/bin/')
-    system2('mkdir -p tmpdeb/usr/share/rustdesk')
-    system2('mkdir -p tmpdeb/usr/share/rustdesk/files/systemd/')
+    system2('mkdir -p tmpdeb/usr/share/xconnect')
+    system2('mkdir -p tmpdeb/usr/share/xconnect/files/systemd/')
     system2('mkdir -p tmpdeb/usr/share/icons/hicolor/256x256/apps/')
     system2('mkdir -p tmpdeb/usr/share/icons/hicolor/scalable/apps/')
     system2('mkdir -p tmpdeb/usr/share/applications/')
     system2('mkdir -p tmpdeb/usr/share/polkit-1/actions')
     system2('rm tmpdeb/usr/bin/rustdesk || true')
     system2(
-        f'cp -r ../{binary_folder}/* tmpdeb/usr/share/rustdesk/')
+        f'cp -r ../{binary_folder}/* tmpdeb/usr/share/xconnect/')
     system2(
-        'cp ../res/rustdesk.service tmpdeb/usr/share/rustdesk/files/systemd/')
+        'cp ../res/xconnect.service tmpdeb/usr/share/xconnect/files/systemd/')
     system2(
-        'cp ../res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/rustdesk.png')
+        'cp ../res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/xconnect.png')
     system2(
-        'cp ../res/scalable.svg tmpdeb/usr/share/icons/hicolor/scalable/apps/rustdesk.svg')
+        'cp ../res/scalable.svg tmpdeb/usr/share/icons/hicolor/scalable/apps/xconnect.svg')
     system2(
-        'cp ../res/rustdesk.desktop tmpdeb/usr/share/applications/rustdesk.desktop')
+        'cp ../res/xconnect.desktop tmpdeb/usr/share/applications/xconnect.desktop')
     system2(
-        'cp ../res/rustdesk-link.desktop tmpdeb/usr/share/applications/rustdesk-link.desktop')
+        'cp ../res/xconnect-link.desktop tmpdeb/usr/share/applications/xconnect-link.desktop')
     system2(
-        "echo \"#!/bin/sh\" >> tmpdeb/usr/share/rustdesk/files/polkit && chmod a+x tmpdeb/usr/share/rustdesk/files/polkit")
+        "echo \"#!/bin/sh\" >> tmpdeb/usr/share/xconnect/files/polkit && chmod a+x tmpdeb/usr/share/xconnect/files/polkit")
 
     system2('mkdir -p tmpdeb/DEBIAN')
     generate_control_file(version)
@@ -397,7 +397,7 @@ def build_deb_from_folder(version, binary_folder):
 
     system2('/bin/rm -rf tmpdeb/')
     system2('/bin/rm -rf ../res/DEBIAN/control')
-    os.rename('rustdesk.deb', '../rustdesk-%s.deb' % version)
+    os.rename('rustdesk.deb', '../xconnect-%s.deb' % version)
     os.chdir("..")
 
 
@@ -411,7 +411,7 @@ def build_flutter_dmg(version, features):
         "cp target/release/liblibrustdesk.dylib target/release/librustdesk.dylib")
     os.chdir('flutter')
     system2('flutter build macos --release')
-    system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/')
+    system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/XConnect.app/Contents/MacOS/')
     '''
     system2(
         "create-dmg --volname \"RustDesk Installer\" --window-pos 200 120 --window-size 800 400 --icon-size 100 --app-drop-link 600 185 --icon RustDesk.app 200 190 --hide-extension RustDesk.app rustdesk.dmg ./build/macos/Build/Products/Release/RustDesk.app")
@@ -457,9 +457,9 @@ def build_flutter_windows(version, features, skip_portable_pack):
                   './rustdesk_portable.exe')
     print(
         f'output location: {os.path.abspath(os.curdir)}/rustdesk_portable.exe')
-    os.rename('./rustdesk_portable.exe', f'./rustdesk-{version}-install.exe')
+    os.rename('./rustdesk_portable.exe', f'./xconnect-{version}-install.exe')
     print(
-        f'output location: {os.path.abspath(os.curdir)}/rustdesk-{version}-install.exe')
+        f'output location: {os.path.abspath(os.curdir)}/xconnect-{version}-install.exe')
 
 
 def main():
@@ -497,22 +497,22 @@ def main():
             return
         system2('cargo build --release --features ' + features)
         # system2('upx.exe target/release/rustdesk.exe')
-        system2('mv target/release/rustdesk.exe target/release/RustDesk.exe')
+        system2('mv target/release/rustdesk.exe target/release/XConnect.exe')
         pa = os.environ.get('P')
         if pa:
             # https://certera.com/kb/tutorial-guide-for-safenet-authentication-client-for-code-signing/
             system2(
                 f'signtool sign /a /v /p {pa} /debug /f .\\cert.pfx /t http://timestamp.digicert.com  '
-                'target\\release\\rustdesk.exe')
+                'target\\release\\XConnect.exe')
         else:
             print('Not signed')
         system2(
-            f'cp -rf target/release/RustDesk.exe {res_dir}')
+            f'cp -rf target/release/XConnect.exe {res_dir}')
         os.chdir('libs/portable')
         system2('pip3 install -r requirements.txt')
         system2(
-            f'python3 ./generate.py -f ../../{res_dir} -o . -e ../../{res_dir}/rustdesk-{version}-win7-install.exe')
-        system2('mv ../../{res_dir}/rustdesk-{version}-win7-install.exe ../..')
+            f'python3 ./generate.py -f ../../{res_dir} -o . -e ../../{res_dir}/xconnect-{version}-win7-install.exe')
+        system2('mv ../../{res_dir}/xconnect-{version}-win7-install.exe ../..')
     elif os.path.isfile('/usr/bin/pacman'):
         # pacman -S -needed base-devel
         system2("sed -i 's/pkgver=.*/pkgver=%s/g' res/PKGBUILD" % version)
@@ -524,7 +524,7 @@ def main():
             system2('strip target/release/rustdesk')
             system2('ln -s res/pacman_install && ln -s res/PKGBUILD')
             system2('HBB=`pwd` makepkg -f')
-        system2('mv rustdesk-%s-0-x86_64.pkg.tar.zst rustdesk-%s-manjaro-arch.pkg.tar.zst' % (
+        system2('mv rustdesk-%s-0-x86_64.pkg.tar.zst xconnect-%s-manjaro-arch.pkg.tar.zst' % (
             version, version))
         # pacman -U ./rustdesk.pkg.tar.zst
     elif os.path.isfile('/usr/bin/yum'):
@@ -534,7 +534,7 @@ def main():
             "sed -i 's/Version:    .*/Version:    %s/g' res/rpm.spec" % version)
         system2('HBB=`pwd` rpmbuild -ba res/rpm.spec')
         system2(
-            'mv $HOME/rpmbuild/RPMS/x86_64/rustdesk-%s-0.x86_64.rpm ./rustdesk-%s-fedora28-centos8.rpm' % (
+            'mv $HOME/rpmbuild/RPMS/x86_64/xconnect-%s-0.x86_64.rpm ./xconnect-%s-fedora28-centos8.rpm' % (
                 version, version))
         # yum localinstall rustdesk.rpm
     elif os.path.isfile('/usr/bin/zypper'):
@@ -544,7 +544,7 @@ def main():
             "sed -i 's/Version:    .*/Version:    %s/g' res/rpm-suse.spec" % version)
         system2('HBB=`pwd` rpmbuild -ba res/rpm-suse.spec')
         system2(
-            'mv $HOME/rpmbuild/RPMS/x86_64/rustdesk-%s-0.x86_64.rpm ./rustdesk-%s-suse.rpm' % (
+            'mv $HOME/rpmbuild/RPMS/x86_64/xconnect-%s-0.x86_64.rpm ./xconnect-%s-suse.rpm' % (
                 version, version))
         # yum localinstall rustdesk.rpm
     else:
@@ -560,9 +560,9 @@ def main():
             system2('cargo bundle --release --features ' + features)
             if osx:
                 system2(
-                    'strip target/release/bundle/osx/RustDesk.app/Contents/MacOS/rustdesk')
+                    'strip target/release/bundle/osx/XConnect.app/Contents/MacOS/rustdesk')
                 system2(
-                    'cp libsciter.dylib target/release/bundle/osx/RustDesk.app/Contents/MacOS/')
+                    'cp libsciter.dylib target/release/bundle/osx/XConnect.app/Contents/MacOS/')
                 # https://github.com/sindresorhus/create-dmg
                 system2('/bin/rm -rf *.dmg')
                 pa = os.environ.get('P')
@@ -574,26 +574,26 @@ def main():
     #rcodesign sign --p12-file ~/.p12/rustdesk-developer-id.p12 --p12-password-file ~/.p12/.cert-pass --code-signature-flags runtime ./target/release/bundle/osx/RustDesk.app/Contents/MacOS/libsciter.dylib
     #rcodesign sign --p12-file ~/.p12/rustdesk-developer-id.p12 --p12-password-file ~/.p12/.cert-pass --code-signature-flags runtime ./target/release/bundle/osx/RustDesk.app
     # goto "Keychain Access" -> "My Certificates" for below id which starts with "Developer ID Application:"
-    codesign -s "Developer ID Application: {0}" --force --options runtime  ./target/release/bundle/osx/RustDesk.app/Contents/MacOS/*
-    codesign -s "Developer ID Application: {0}" --force --options runtime  ./target/release/bundle/osx/RustDesk.app
+    codesign -s "Developer ID Application: {0}" --force --options runtime  ./target/release/bundle/osx/XConnect.app/Contents/MacOS/*
+    codesign -s "Developer ID Application: {0}" --force --options runtime  ./target/release/bundle/osx/XConnect.app
     '''.format(pa))
                 system2(
-                    'create-dmg "RustDesk %s.dmg" "target/release/bundle/osx/RustDesk.app"' % version)
-                os.rename('RustDesk %s.dmg' %
-                          version, 'rustdesk-%s.dmg' % version)
+                    'create-dmg "XConnect %s.dmg" "target/release/bundle/osx/XConnect.app"' % version)
+                os.rename('XConnect %s.dmg' %
+                          version, 'xconnect-%s.dmg' % version)
                 if pa:
                     system2('''
     # https://pyoxidizer.readthedocs.io/en/apple-codesign-0.14.0/apple_codesign.html
     # https://pyoxidizer.readthedocs.io/en/stable/tugger_code_signing.html
     # https://developer.apple.com/developer-id/
     # goto xcode and login with apple id, manager certificates (Developer ID Application and/or Developer ID Installer) online there (only download and double click (install) cer file can not export p12 because no private key)
-    #rcodesign sign --p12-file ~/.p12/rustdesk-developer-id.p12 --p12-password-file ~/.p12/.cert-pass --code-signature-flags runtime ./rustdesk-{1}.dmg
-    codesign -s "Developer ID Application: {0}" --force --options runtime ./rustdesk-{1}.dmg
+    #rcodesign sign --p12-file ~/.p12/rustdesk-developer-id.p12 --p12-password-file ~/.p12/.cert-pass --code-signature-flags runtime ./xconnect-{1}.dmg
+    codesign -s "Developer ID Application: {0}" --force --options runtime ./xconnect-{1}.dmg
     # https://appstoreconnect.apple.com/access/api
     # https://gregoryszorc.com/docs/apple-codesign/stable/apple_codesign_getting_started.html#apple-codesign-app-store-connect-api-key
     # p8 file is generated when you generate api key (can download only once)
-    rcodesign notary-submit --api-key-path ../.p12/api-key.json  --staple rustdesk-{1}.dmg
-    # verify:  spctl -a -t exec -v /Applications/RustDesk.app
+    rcodesign notary-submit --api-key-path ../.p12/api-key.json  --staple xconnect-{1}.dmg
+    # verify:  spctl -a -t exec -v /Applications/XConnect.app
     '''.format(pa, version))
                 else:
                     print('Not signed')
@@ -602,33 +602,33 @@ def main():
                 system2(
                     'mv target/release/bundle/deb/rustdesk*.deb ./rustdesk.deb')
                 system2('dpkg-deb -R rustdesk.deb tmpdeb')
-                system2('mkdir -p tmpdeb/usr/share/rustdesk/files/systemd/')
+                system2('mkdir -p tmpdeb/usr/share/xconnect/files/systemd/')
                 system2('mkdir -p tmpdeb/usr/share/icons/hicolor/256x256/apps/')
                 system2('mkdir -p tmpdeb/usr/share/icons/hicolor/scalable/apps/')
                 system2(
-                    'cp res/rustdesk.service tmpdeb/usr/share/rustdesk/files/systemd/')
+                    'cp res/xconnect.service tmpdeb/usr/share/xconnect/files/systemd/')
                 system2(
-                    'cp res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/rustdesk.png')
+                    'cp res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/xconnect.png')
                 system2(
-                    'cp res/scalable.svg tmpdeb/usr/share/icons/hicolor/scalable/apps/rustdesk.svg')
+                    'cp res/scalable.svg tmpdeb/usr/share/icons/hicolor/scalable/apps/xconnect.svg')
                 system2(
-                    'cp res/rustdesk.desktop tmpdeb/usr/share/applications/rustdesk.desktop')
+                    'cp res/xconnect.desktop tmpdeb/usr/share/applications/xconnect.desktop')
                 system2(
-                    'cp res/rustdesk-link.desktop tmpdeb/usr/share/applications/rustdesk-link.desktop')
-                os.system('mkdir -p tmpdeb/etc/rustdesk/')
-                os.system('cp -a res/startwm.sh tmpdeb/etc/rustdesk/')
+                    'cp res/xconnect-link.desktop tmpdeb/usr/share/applications/xconnect-link.desktop')
+                os.system('mkdir -p tmpdeb/etc/xconnect/')
+                os.system('cp -a res/startwm.sh tmpdeb/etc/xconnect/')
                 os.system('mkdir -p tmpdeb/etc/X11/rustdesk/')
                 os.system('cp res/xorg.conf tmpdeb/etc/X11/rustdesk/')
                 os.system('cp -a DEBIAN/* tmpdeb/DEBIAN/')
                 os.system('mkdir -p tmpdeb/etc/pam.d/')
                 os.system('cp pam.d/rustdesk.debian tmpdeb/etc/pam.d/rustdesk')
                 system2('strip tmpdeb/usr/bin/rustdesk')
-                system2('mkdir -p tmpdeb/usr/share/rustdesk')
-                system2('mv tmpdeb/usr/bin/rustdesk tmpdeb/usr/share/rustdesk/')
-                system2('cp libsciter-gtk.so tmpdeb/usr/share/rustdesk/')
+                system2('mkdir -p tmpdeb/usr/share/xconnect')
+                system2('mv tmpdeb/usr/bin/rustdesk tmpdeb/usr/share/xconnect/')
+                system2('cp libsciter-gtk.so tmpdeb/usr/share/xconnect/')
                 md5_file_folder("tmpdeb/")
                 system2('dpkg-deb -b tmpdeb rustdesk.deb; /bin/rm -rf tmpdeb/')
-                os.rename('rustdesk.deb', 'rustdesk-%s.deb' % version)
+                os.rename('rustdesk.deb', 'xconnect-%s.deb' % version)
 
 
 def md5_file(fn):

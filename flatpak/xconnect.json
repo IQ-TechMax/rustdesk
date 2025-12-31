@@ -1,18 +1,24 @@
 {
-  "id": "com.rustdesk.RustDesk",
+  "id": "com.xconnect.XConnect",
   "runtime": "org.freedesktop.Platform",
   "runtime-version": "24.08",
   "sdk": "org.freedesktop.Sdk",
-  "command": "rustdesk",
-  "cleanup": ["/include", "/lib/pkgconfig", "/share/gtk-doc"],
-  "rename-desktop-file": "rustdesk.desktop",
-  "rename-icon": "rustdesk",
+  "command": "xconnect",
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "/share/gtk-doc"
+  ],
+  "rename-desktop-file": "xconnect.desktop",
+  "rename-icon": "xconnect",
   "modules": [
     "shared-modules/libappindicator/libappindicator-gtk3-12.10.json",
     {
       "name": "xdotool",
       "no-autogen": true,
-      "make-install-args": ["PREFIX=${FLATPAK_DEST}"],
+      "make-install-args": [
+        "PREFIX=${FLATPAK_DEST}"
+      ],
       "sources": [
         {
           "type": "archive",
@@ -24,7 +30,9 @@
     {
       "name": "pam",
       "buildsystem": "autotools",
-      "config-opts": ["--disable-selinux"],
+      "config-opts": [
+        "--disable-selinux"
+      ],
       "sources": [
         {
           "type": "archive",
@@ -34,21 +42,21 @@
       ]
     },
     {
-      "name": "rustdesk",
+      "name": "xconnect",
       "buildsystem": "simple",
       "build-commands": [
-        "bsdtar -Oxf rustdesk.deb data.tar.xz | bsdtar -xf -",
+        "bsdtar -Oxf xconnect.deb data.tar.xz | bsdtar -xf -",
         "cp -r usr/* /app/",
-        "mkdir -p /app/bin && ln -s /app/share/rustdesk/rustdesk /app/bin/rustdesk"
+        "mkdir -p /app/bin && ln -s /app/share/xconnect/xconnect /app/bin/xconnect"
       ],
       "sources": [
         {
           "type": "file",
-          "path": "rustdesk.deb"
+          "path": "xconnect.deb"
         },
         {
           "type": "file",
-          "path": "com.rustdesk.RustDesk.metainfo.xml"
+          "path": "com.xconnect.XConnect.metainfo.xml"
         }
       ]
     }
