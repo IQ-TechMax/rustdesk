@@ -1,8 +1,10 @@
 Name:       xconnect
-Version:    1.1.9
+Version:    1.4.2
 Release:    0
 Summary:    RPM package
 License:    GPL-3.0
+URL:        https://xconnect.app
+Vendor:     XConnect <info@xconnect.app>
 Requires:   gtk3 libxcb1 xdotool libXfixes3 alsa-utils libXtst6 libva2 pam gstreamer-plugins-base gstreamer-plugin-pipewire
 Recommends: libayatana-appindicator3-1
 
@@ -25,20 +27,20 @@ mkdir -p %{buildroot}/usr/share/xconnect/
 mkdir -p %{buildroot}/usr/share/xconnect/files/
 mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps/
 mkdir -p %{buildroot}/usr/share/icons/hicolor/scalable/apps/
-install -m 755 $HBB/target/release/rustdesk %{buildroot}/usr/bin/rustdesk
+install -m 755 $HBB/target/release/xconnect %{buildroot}/usr/bin/xconnect
 install $HBB/libsciter-gtk.so %{buildroot}/usr/share/xconnect/libsciter-gtk.so
 install $HBB/res/xconnect.service %{buildroot}/usr/share/xconnect/files/
-install $HBB/res/128x128@2x.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/rustdesk.png
-install $HBB/res/scalable.svg %{buildroot}/usr/share/icons/hicolor/scalable/apps/rustdesk.svg
+install $HBB/res/128x128@2x.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/xconnect.png
+install $HBB/res/scalable.svg %{buildroot}/usr/share/icons/hicolor/scalable/apps/xconnect.svg
 install $HBB/res/xconnect.desktop %{buildroot}/usr/share/xconnect/files/
 install $HBB/res/xconnect-link.desktop %{buildroot}/usr/share/xconnect/files/
 
 %files
-/usr/bin/rustdesk
+/usr/bin/xconnect
 /usr/share/xconnect/libsciter-gtk.so
 /usr/share/xconnect/files/xconnect.service
-/usr/share/icons/hicolor/256x256/apps/rustdesk.png
-/usr/share/icons/hicolor/scalable/apps/rustdesk.svg
+/usr/share/icons/hicolor/256x256/apps/xconnect.png
+/usr/share/icons/hicolor/scalable/apps/xconnect.svg
 /usr/share/xconnect/files/xconnect.desktop
 /usr/share/xconnect/files/xconnect-link.desktop
 
@@ -53,7 +55,7 @@ case "$1" in
   ;;
   2)
     # for upgrade
-    systemctl stop rustdesk || true
+    systemctl stop xconnect || true
   ;;
 esac
 
@@ -62,16 +64,16 @@ cp /usr/share/xconnect/files/xconnect.service /etc/systemd/system/xconnect.servi
 cp /usr/share/xconnect/files/xconnect.desktop /usr/share/applications/
 cp /usr/share/xconnect/files/xconnect-link.desktop /usr/share/applications/
 systemctl daemon-reload
-systemctl enable rustdesk
-systemctl start rustdesk
+systemctl enable xconnect
+systemctl start xconnect
 update-desktop-database
 
 %preun
 case "$1" in
   0)
     # for uninstall
-    systemctl stop rustdesk || true
-    systemctl disable rustdesk || true
+    systemctl stop xconnect || true
+    systemctl disable xconnect || true
     rm /etc/systemd/system/xconnect.service || true
   ;;
   1)

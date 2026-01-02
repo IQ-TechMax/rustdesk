@@ -18,7 +18,7 @@ if [ "$1" = configure ]; then
 		cp /usr/share/xconnect/files/systemd/xconnect.service /usr/lib/systemd/system/xconnect.service
 		# try fix error in Ubuntu 18.04
 		# Failed to reload xconnect.service: Unit xconnect.service is not loaded properly: Exec format error.
-		# /usr/lib/systemd/system/xconnect.service:10: Executable path is not absolute: pkill -f "rustdesk --"
+		# /usr/lib/systemd/system/xconnect.service:10: Executable path is not absolute: pkill -f "xconnect --"
 		if [ -e /usr/bin/pkill ]; then
 			sed -i "s|pkill|/usr/bin/pkill|g" /usr/lib/systemd/system/xconnect.service
 		fi

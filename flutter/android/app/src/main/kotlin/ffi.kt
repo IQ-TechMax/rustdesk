@@ -9,7 +9,7 @@ import com.xconnect.app.RdClipboardManager
 
 object FFI {
     init {
-        System.loadLibrary("rustdesk")
+        System.loadLibrary("xconnect")
     }
 
     external fun init(ctx: Context)
