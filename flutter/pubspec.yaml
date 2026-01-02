@@ -127,34 +127,27 @@ dependency_overrides:
 
 # rerun: flutter pub run flutter_launcher_icons
 flutter_icons:
-  image_path: "../res/icon.png"
+  image_path: "assets/xConnect-Icon.png"
   remove_alpha_ios: true
   android: true
   ios: true
   windows:
     generate: true
   macos:
-    image_path: "../res/mac-icon.png"
+    image_path: "assets/xConnect-Icon.png"
     generate: true
   linux: true
   web:
     generate: true
 
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter.
-flutter:
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
-  uses-material-design: true
+# ... (comments)
 
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
     - assets/XconnectBackground.jpg
-    - assets/XconnectLogo.png
+    - assets/xConnect-Logo.png
+    - assets/xConnect-Icon.png
 
   fonts:
     - family: GestureIcons

@@ -109,7 +109,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                   margin:
                       const EdgeInsets.only(bottom: 15), // 5px bottom margin
                   child: Image.asset(
-                    'assets/XconnectLogo.png',
+                    'assets/xConnect-Logo.png',
                     width: 250,
                     height: 75,
                   ),
