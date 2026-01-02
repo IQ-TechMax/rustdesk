@@ -75,7 +75,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             child: Container(
               decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/XconnectBackground.jpg'),
+                  image: AssetImage('assets/xConnectBackground.png'),
                   fit: BoxFit.cover,
                 ),
               ),
