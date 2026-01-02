@@ -535,7 +535,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
                       child: Container(
                         decoration: BoxDecoration(
                           image: DecorationImage(
-                            image: AssetImage('assets/XconnectBackground.png'),
+                            image: AssetImage('assets/xConnectBackground.png'),
                             fit: BoxFit.cover,
                           ),
                         ),

@@ -1078,7 +1078,7 @@ class DeviceSelectionScreen extends StatelessWidget {
           height: double.infinity,
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/XconnectBackground.png'),
+              image: AssetImage('assets/xConnectBackground.png'),
               fit: BoxFit.cover,
             ),
           ),
