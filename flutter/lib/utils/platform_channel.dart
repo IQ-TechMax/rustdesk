@@ -13,8 +13,22 @@ class RdPlatformChannel {
 
   static RdPlatformChannel get instance => _windowUtil;
 
+  final MethodChannel _hostMethodChannel =
+      MethodChannel("org.rustdesk.rustdesk/host");
+  
+  // XConnect: Keep our platform channel for custom methods
   final MethodChannel _platformMethodChannel =
       MethodChannel("org.rustdesk.rustdesk/platform");
+
+  /// Bump the position of the mouse cursor, if applicable (from upstream)
+  Future<bool> bumpMouse({required int dx, required int dy}) async {
+    // No debug output; this call is too chatty.
+
+    bool? result = await _hostMethodChannel
+      .invokeMethod("bumpMouse", {"dx": dx, "dy": dy});
+
+    return result ?? false;
+  }
 
   /// Change the theme of the system window
   Future<void> changeSystemWindowTheme(SystemWindowTheme theme) {
@@ -23,16 +37,17 @@ class RdPlatformChannel {
       print(
           "[Window ${kWindowId ?? 'Main'}] change system window theme to ${theme.name}");
     }
-    return _platformMethodChannel
+    return _hostMethodChannel
         .invokeMethod("setWindowTheme", {"themeName": theme.name});
   }
 
   /// Terminate .app manually.
   Future<void> terminate() {
     assert(isMacOS);
-    return _platformMethodChannel.invokeMethod("terminate");
+    return _hostMethodChannel.invokeMethod("terminate");
   }
 
+  // XConnect: Custom methods for local IP and port discovery
   Future<String?> getLocalIp() async {
     if (isWindows) {
       return await _platformMethodChannel.invokeMethod("getLocalIp");
