@@ -202,6 +202,7 @@ class AbModel {
       final api = "${await bind.mainGetApiServer()}/api/ab/settings";
       var headers = getHttpHeaders();
       headers['Content-Type'] = "application/json";
+      _setEmptyBody(headers);
       final resp = await http.post(Uri.parse(api), headers: headers);
       if (resp.statusCode == 404) {
         debugPrint("HTTP 404, api server doesn't support shared address book");
@@ -228,6 +229,7 @@ class AbModel {
       final api = "${await bind.mainGetApiServer()}/api/ab/personal";
       var headers = getHttpHeaders();
       headers['Content-Type'] = "application/json";
+      _setEmptyBody(headers);
       final resp = await http.post(Uri.parse(api), headers: headers);
       if (resp.statusCode == 404) {
         debugPrint("HTTP 404, current api server is legacy mode");
@@ -269,6 +271,7 @@ class AbModel {
             });
         var headers = getHttpHeaders();
         headers['Content-Type'] = "application/json";
+        _setEmptyBody(headers);
         final resp = await http.post(uri, headers: headers);
         Map<String, dynamic> json =
             _jsonDecodeRespMap(decode_http_response(resp), resp.statusCode);
@@ -319,8 +322,8 @@ class AbModel {
 // #endregion
 
 // #region peer
-  Future<String?> addIdToCurrent(
-      String id, String alias, String password, List<dynamic> tags) async {
+  Future<String?> addIdToCurrent(String id, String alias, String password,
+      List<dynamic> tags, String note) async {
     if (currentAbPeers.where((element) => element.id == id).isNotEmpty) {
       return "$id already exists in address book $_currentName";
     }
@@ -332,6 +335,9 @@ class AbModel {
     // avoid set existing password to empty
     if (password.isNotEmpty) {
       peer['password'] = password;
+    }
+    if (note.isNotEmpty) {
+      peer['note'] = note;
     }
     final ret = await addPeersTo([peer], _currentName.value);
     _syncAllFromRecent = true;
@@ -373,6 +379,14 @@ class AbModel {
     await pullNonLegacyAfterChange();
     currentAbPeers.refresh();
     _saveCache();
+    return res;
+  }
+
+  Future<bool> changeNote({required String id, required String note}) async {
+    bool res = await current.changeNote(id: id, note: note);
+    await pullNonLegacyAfterChange();
+    currentAbPeers.refresh();
+    // no need to save cache
     return res;
   }
 
@@ -658,6 +672,15 @@ class AbModel {
     }
   }
 
+  String getPeerNote(String id) {
+    final it = currentAbPeers.where((p0) => p0.id == id);
+    if (it.isEmpty) {
+      return '';
+    } else {
+      return it.first.note;
+    }
+  }
+
   Color getCurrentAbTagColor(String tag) {
     if (tag == kUntagged) {
       return MyTheme.accent;
@@ -863,6 +886,8 @@ abstract class BaseAb {
 
   Future<bool> changeAlias({required String id, required String alias});
 
+  Future<bool> changeNote({required String id, required String note});
+
   Future<bool> changePersonalHashPassword(String id, String hash);
 
   Future<bool> changeSharedPassword(String id, String password);
@@ -990,16 +1015,8 @@ class LegacyAb extends BaseAb {
       var authHeaders = getHttpHeaders();
       authHeaders['Content-Type'] = "application/json";
       final body = jsonEncode({"data": jsonEncode(_serialize())});
-      http.Response resp;
-      // support compression
-      if (licensedDevices > 0 && body.length > 1024) {
-        authHeaders['Content-Encoding'] = "gzip";
-        resp = await http.post(Uri.parse(api),
-            headers: authHeaders, body: GZipCodec().encode(utf8.encode(body)));
-      } else {
-        resp =
-            await http.post(Uri.parse(api), headers: authHeaders, body: body);
-      }
+      http.Response resp =
+          await http.post(Uri.parse(api), headers: authHeaders, body: body);
       if (resp.statusCode == 200 &&
           (resp.body.isEmpty || resp.body.toLowerCase() == 'null')) {
         ret = true;
@@ -1088,6 +1105,12 @@ class LegacyAb extends BaseAb {
     }
     it.first.alias = alias;
     return await pushAb();
+  }
+
+  @override
+  Future<bool> changeNote({required String id, required String note}) async {
+    // no need to implement
+    return false;
   }
 
   @override
@@ -1378,6 +1401,7 @@ class Ab extends BaseAb {
             });
         var headers = getHttpHeaders();
         headers['Content-Type'] = "application/json";
+        _setEmptyBody(headers);
         final resp = await http.post(uri, headers: headers);
         statusCode = resp.statusCode;
         Map<String, dynamic> json =
@@ -1435,6 +1459,7 @@ class Ab extends BaseAb {
       );
       var headers = getHttpHeaders();
       headers['Content-Type'] = "application/json";
+      _setEmptyBody(headers);
       final resp = await http.post(uri, headers: headers);
       statusCode = resp.statusCode;
       List<dynamic> json =
@@ -1545,6 +1570,27 @@ class Ab extends BaseAb {
       return true;
     } catch (err) {
       debugPrint('changeAlias err: ${err.toString()}');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> changeNote({required String id, required String note}) async {
+    try {
+      final api =
+          "${await bind.mainGetApiServer()}/api/ab/peer/update/${profile.guid}";
+      var headers = getHttpHeaders();
+      headers['Content-Type'] = "application/json";
+      final body = jsonEncode({"id": id, "note": note});
+      final resp = await http.put(Uri.parse(api), headers: headers, body: body);
+      final errMsg = _jsonDecodeActionResp(resp);
+      if (errMsg.isNotEmpty) {
+        BotToast.showText(contentColor: Colors.red, text: errMsg);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      debugPrint('changeNote err: ${err.toString()}');
       return false;
     }
   }
@@ -1816,6 +1862,11 @@ class DummyAb extends BaseAb {
   }
 
   @override
+  Future<bool> changeNote({required String id, required String note}) async {
+    return false;
+  }
+
+  @override
   Future<bool> changePersonalHashPassword(String id, String hash) async {
     return false;
   }
@@ -1922,4 +1973,9 @@ String _jsonDecodeActionResp(http.Response resp) {
     }
   }
   return errMsg;
+}
+
+// https://github.com/seanmonstar/reqwest/issues/838
+void _setEmptyBody(Map<String, String> headers) {
+  headers['Content-Length'] = '0';
 }

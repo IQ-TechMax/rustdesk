@@ -374,6 +374,7 @@ class _ConnectionPageState extends State<ConnectionPage>
                         rdpUsername: '',
                         loginName: '',
                         device_group_name: '',
+                        note: '',
                       );
                       _autocompleteOpts = [emptyPeer];
                     } else {
