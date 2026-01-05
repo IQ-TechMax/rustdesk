@@ -9,12 +9,33 @@
 
 | Branch | Last Synced | Commit | Documented By |
 |--------|-------------|--------|---------------|
-| `windows_android_build` | 2026-01-05 | Logo update + v1.4.4 | LLM |
-| `linux_build` | 2026-01-05 | Logo update + v1.4.4 | LLM |
+| `windows_android_build` | 2026-01-05 | PAM file fix | LLM |
+| `linux_build` | 2026-01-05 | PAM file fix | LLM |
 
 ---
 
-## Recent Updates (2026-01-05) - Logo Generation Scripts
+## Recent Updates (2026-01-05) - PAM File Fix
+
+### Package Coexistence Fix (Both Branches)
+
+**Issue:** XConnect `.deb` package couldn't be installed alongside original RustDesk due to file conflict at `/etc/pam.d/rustdesk`.
+
+**Root Cause:** `build.py` was copying PAM file to `/etc/pam.d/rustdesk` instead of `/etc/pam.d/xconnect`.
+
+**Files Modified:**
+- `build.py` line 351: `tmpdeb/etc/pam.d/rustdesk` → `tmpdeb/etc/pam.d/xconnect`
+- `build.py` line 624 (linux_build only): Same fix
+
+**Impact:** 
+- Linux: ✅ Fixed - XConnect and original RustDesk can now coexist
+- Windows: ✅ Not affected (no PAM on Windows)
+- Android: ✅ Not affected (uses package names for isolation)
+
+**Verified:** Linux package conflict resolved ✅
+
+---
+
+## Previous Updates (2026-01-05) - Logo Generation Scripts
 
 ### Logo Update (Both Branches)
 
@@ -150,6 +171,7 @@ git diff master --name-only --diff-filter=D
 
 | Date | Branch | Changes | Updated By |
 |------|--------|---------|------------|
+| 2026-01-05 | both | PAM file fix for package coexistence | LLM |
 | 2026-01-05 | both | Logo scripts, icon generation | LLM |
 | 2026-01-05 | both | Renamed .agent/docs to xconnect/docs | User |
 | 2026-01-04 | linux_build | Synced to v1.4.4, 10 conflicts, 6 fixes | LLM |

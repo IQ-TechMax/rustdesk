@@ -98,6 +98,7 @@ Complete list of all files changed for RustDesk → XConnect rename.
 ### Linux Packaging
 | File | Changes |
 |------|---------|
+| `build.py` | PAM file destination: `tmpdeb/etc/pam.d/xconnect` (was `rustdesk`) |
 | `res/DEBIAN/prerm` | Service names |
 | `res/DEBIAN/preinst` | Service names |
 | `res/DEBIAN/postrm` | Config directory |
