@@ -92,10 +92,26 @@ XConnect is a fork of RustDesk customized for smart classroom environments where
 
 ## Branch Structure
 
+```
+master (exact RustDesk upstream copy)
+├── xconnect/docs/          ← Only addition (sync documentation)
+│
+├── windows_android_build   (merge from master)
+│   └── XConnect + Windows + Android client builds
+│
+└── linux_build             (merge from master)
+    └── XConnect + Linux projector/receiver builds
+```
+
 | Branch | Platform | Purpose |
 |--------|----------|---------|
-| `linux_build` | Linux | Projector code (server/responder) |
-| `windows_android_build` | Android/Windows | Client code (broadcaster/controller) |
+| `master` | - | Exact upstream copy for easy sync |
+| `windows_android_build` | Windows, Android | Client apps (teacher/admin) |
+| `linux_build` | Linux | Projector/receiver (server side) |
+
+> **Sync Strategy:** Keep `master` clean (only `xconnect/docs/` added). 
+> Feature branches merge FROM master to get upstream updates.
+> See [fork_sync_procedure.md](./fork_sync_procedure.md) for details.
 
 ---
 
