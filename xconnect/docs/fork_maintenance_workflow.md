@@ -205,7 +205,7 @@ Workflow:
 4. Push windows_android_build
 5. THEN move to linux_build (same process)
 
-Use `.agent/docs/` for context:
+Use `xconnect/docs/` for context:
 - `merge_conflict_resolution.md` - per-file strategies
 - `llm_sync_guide.md` - custom code to preserve
 - `hbb_common_submodule_guide.md` - config.rs changes

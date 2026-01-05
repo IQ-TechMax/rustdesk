@@ -9,12 +9,30 @@
 
 | Branch | Last Synced | Commit | Documented By |
 |--------|-------------|--------|---------------|
-| `windows_android_build` | 2026-01-03 | Synced to v1.4.4 | LLM |
-| `linux_build` | 2026-01-04 | Synced to v1.4.4 | LLM |
+| `windows_android_build` | 2026-01-05 | Logo update + v1.4.4 | LLM |
+| `linux_build` | 2026-01-05 | Logo update + v1.4.4 | LLM |
 
 ---
 
-## Recent Updates (2026-01-03/04) - Upstream v1.4.4 Sync
+## Recent Updates (2026-01-05) - Logo Generation Scripts
+
+### Logo Update (Both Branches)
+
+**Changes:**
+- Added `res/gen_icon.sh` - Utility script for icon generation with configurable padding
+- Added `res/update_all_icons.sh` - Master script for automated icon generation/replacement
+- Updated all app icons for Android, Windows, Linux with proper safe zone padding
+- Updated `xconnect/docs/xconnect_logo_checklist.md` with automated generation workflow
+
+**Files Added:**
+- `res/gen_icon.sh`
+- `res/update_all_icons.sh`
+
+**Verified:** Android, Windows, Linux ✅
+
+---
+
+## Previous Updates (2026-01-03/04) - Upstream v1.4.4 Sync
 
 ### Major Sync: RustDesk v1.4.4
 
@@ -123,7 +141,7 @@ git diff master --name-only --diff-filter=D
 > Please:
 > 1. Run `git log --oneline --since="[DATE]" --name-only`
 > 2. Identify what files changed
-> 3. Update the relevant docs in `.agent/docs/`
+> 3. Update the relevant docs in `xconnect/docs/`
 > 4. Update this tracker with new sync date
 
 ---
@@ -132,6 +150,8 @@ git diff master --name-only --diff-filter=D
 
 | Date | Branch | Changes | Updated By |
 |------|--------|---------|------------|
+| 2026-01-05 | both | Logo scripts, icon generation | LLM |
+| 2026-01-05 | both | Renamed .agent/docs to xconnect/docs | User |
 | 2026-01-04 | linux_build | Synced to v1.4.4, 10 conflicts, 6 fixes | LLM |
 | 2026-01-03 | windows_android_build | Synced to v1.4.4, 13 conflicts, 5 fixes | LLM |
 | 2026-01-02 | windows_android_build | Initial complete documentation | LLM |
