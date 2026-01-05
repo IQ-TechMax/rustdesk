@@ -348,7 +348,7 @@ def build_flutter_deb(version, features):
     system2(
         'cp ../res/xorg.conf tmpdeb/etc/xconnect/')
     system2(
-        'cp ../res/pam.d/rustdesk.debian tmpdeb/etc/pam.d/rustdesk')
+        'cp ../res/pam.d/rustdesk.debian tmpdeb/etc/pam.d/xconnect')
     system2(
         "echo \"#!/bin/sh\" >> tmpdeb/usr/share/xconnect/files/polkit && chmod a+x tmpdeb/usr/share/xconnect/files/polkit")
 
@@ -621,7 +621,7 @@ def main():
                 os.system('cp res/xorg.conf tmpdeb/etc/X11/rustdesk/')
                 os.system('cp -a DEBIAN/* tmpdeb/DEBIAN/')
                 os.system('mkdir -p tmpdeb/etc/pam.d/')
-                os.system('cp pam.d/rustdesk.debian tmpdeb/etc/pam.d/rustdesk')
+                os.system('cp pam.d/rustdesk.debian tmpdeb/etc/pam.d/xconnect')
                 system2('strip tmpdeb/usr/bin/rustdesk')
                 system2('mkdir -p tmpdeb/usr/share/xconnect')
                 system2('mv tmpdeb/usr/bin/rustdesk tmpdeb/usr/share/xconnect/')
