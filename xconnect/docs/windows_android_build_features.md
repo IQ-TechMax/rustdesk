@@ -106,9 +106,13 @@ connectivity_plus: ^5.0.2  # Network change detection (for network_monitor.dart)
 |------|--------|
 | `MainActivity.kt` | Multicast lock |
 | `AndroidManifest.xml` | Permissions, labels |
-| `FloatingWindowService.kt` | "Show XConnect" |
+| `FloatingWindowService.kt` | "Show XConnect", **crash fix (2026-01-09)** |
 | `common.kt` | Package rename |
 | Other `.kt` files | Package rename to com.xconnect.app |
+
+### FloatingWindowService Crash Fix (2026-01-09)
+**Issue:** App crashed on close/reopen with "View not attached to window manager".
+**Fix:** Wrapped `windowManager.removeView()` in try-catch in `onDestroy()`.
 
 ---
 

@@ -9,12 +9,29 @@
 
 | Branch | Last Synced | Commit | Documented By |
 |--------|-------------|--------|---------------|
-| `windows_android_build` | 2026-01-09 | Removed settings option | LLM |
+| `windows_android_build` | 2026-01-09 | FloatingWindowService crash fix | LLM |
 | `linux_build` | 2026-01-09 | Autostart & reduced window | LLM |
 
 ---
 
 ## Recent Updates (2026-01-09)
+
+### FloatingWindowService Crash Fix (windows_android_build only)
+
+**Issue:** App crashed when closing/reopening due to "View not attached to window manager" exception in FloatingWindowService.onDestroy().
+
+**Root Cause:** FloatingWindowService tried to remove a view that wasn't attached to the window manager.
+
+**Fix:** Wrapped `windowManager.removeView()` in try-catch to handle the IllegalArgumentException gracefully.
+
+**Files Modified:**
+- `flutter/android/app/src/main/kotlin/com/xconnect/app/FloatingWindowService.kt`: Added try-catch in onDestroy()
+
+**Impact:**
+- Android: ✅ No more crash on app close/reopen
+- Windows/Linux: ✅ Not affected
+
+---
 
 ### Settings Option Removed (windows_android_build only)
 
@@ -209,8 +226,8 @@ git diff master --name-only --diff-filter=D
 
 | Date | Branch | Changes | Updated By |
 |------|--------|---------|------------|
+| 2026-01-09 | windows_android_build | FloatingWindowService crash fix | LLM |
 | 2026-01-09 | linux_build | Autostart, reduced window, tray menu | LLM |
-| 2026-01-09 | windows_android_build | Removed settings option | LLM |
 | 2026-01-05 | both | PAM file fix for package coexistence | LLM |
 | 2026-01-05 | both | Logo scripts, icon generation | LLM |
 | 2026-01-05 | both | Renamed .agent/docs to xconnect/docs | User |
