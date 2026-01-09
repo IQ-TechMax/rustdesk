@@ -83,7 +83,12 @@ class FloatingWindowService : Service(), View.OnTouchListener {
     override fun onDestroy() {
         super.onDestroy()
         if (viewCreated) {
-            windowManager.removeView(floatingView)
+            try {
+                windowManager.removeView(floatingView)
+            } catch (e: IllegalArgumentException) {
+                // View not attached to window manager, ignore
+                Log.d(logTag, "FloatingView not attached, skipping removeView: ${e.message}")
+            }
         }
         handler.removeCallbacks(runnable)
     }
