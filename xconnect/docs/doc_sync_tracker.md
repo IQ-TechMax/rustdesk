@@ -9,12 +9,26 @@
 
 | Branch | Last Synced | Commit | Documented By |
 |--------|-------------|--------|---------------|
-| `windows_android_build` | 2026-01-09 | build.py update | LLM |
+| `windows_android_build` | 2026-01-09 | Removed settings option | LLM |
 | `linux_build` | 2026-01-09 | Autostart & reduced window | LLM |
 
 ---
 
-## Recent Updates (2026-01-09) - Autostart & Reduced Window (linux_build)
+## Recent Updates (2026-01-09)
+
+### Settings Option Removed (windows_android_build only)
+
+**Change:** Removed the Settings gear icon/button from the desktop tab page.
+
+**Files Modified:**
+- `flutter/lib/desktop/pages/desktop_tab_page.dart`: Removed settings tap handler
+
+**Impact:**
+- Windows: ✅ Cleaner UI without settings access
+- Android: ✅ Not affected
+- Linux: ✅ Not affected (different branch)
+
+---
 
 ### Autostart on Session Login (linux_build only)
 
@@ -196,7 +210,7 @@ git diff master --name-only --diff-filter=D
 | Date | Branch | Changes | Updated By |
 |------|--------|---------|------------|
 | 2026-01-09 | linux_build | Autostart, reduced window, tray menu | LLM |
-| 2026-01-09 | windows_android_build | build.py update | LLM |
+| 2026-01-09 | windows_android_build | Removed settings option | LLM |
 | 2026-01-05 | both | PAM file fix for package coexistence | LLM |
 | 2026-01-05 | both | Logo scripts, icon generation | LLM |
 | 2026-01-05 | both | Renamed .agent/docs to xconnect/docs | User |
