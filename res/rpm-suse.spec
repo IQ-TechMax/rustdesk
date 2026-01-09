@@ -34,6 +34,7 @@ install $HBB/res/128x128@2x.png %{buildroot}/usr/share/icons/hicolor/256x256/app
 install $HBB/res/scalable.svg %{buildroot}/usr/share/icons/hicolor/scalable/apps/xconnect.svg
 install $HBB/res/xconnect.desktop %{buildroot}/usr/share/xconnect/files/
 install $HBB/res/xconnect-link.desktop %{buildroot}/usr/share/xconnect/files/
+install -Dm 644 $HBB/res/xconnect.desktop -t "%{buildroot}/etc/xdg/autostart"
 
 %files
 /usr/bin/xconnect
@@ -43,6 +44,7 @@ install $HBB/res/xconnect-link.desktop %{buildroot}/usr/share/xconnect/files/
 /usr/share/icons/hicolor/scalable/apps/xconnect.svg
 /usr/share/xconnect/files/xconnect.desktop
 /usr/share/xconnect/files/xconnect-link.desktop
+/etc/xdg/autostart/xconnect.desktop
 
 %changelog
 # let's skip this for now
@@ -87,6 +89,7 @@ case "$1" in
     # for uninstall
     rm /usr/share/applications/xconnect.desktop || true
     rm /usr/share/applications/xconnect-link.desktop || true
+    rm /etc/xdg/autostart/xconnect.desktop || true
     update-desktop-database
   ;;
   1)

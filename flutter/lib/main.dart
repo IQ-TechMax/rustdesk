@@ -48,6 +48,8 @@ final int XCONNECT_PORT = 12345; // port used by XConnect for peer to peer conne
 // Android must listen on TCP:64546.
 final int SHARED_PORT = 64546; 
 
+
+
 Future<void> main(List<String> args) async {
   earlyAssert();
   WidgetsFlutterBinding.ensureInitialized();
@@ -120,6 +122,7 @@ Future<void> main(List<String> args) async {
   } else if (args.contains('--install')) {
     runInstallPage();
   } else {
+
     desktopType = DesktopType.main;
     await windowManager.ensureInitialized();
     windowManager.setPreventClose(true);
@@ -287,8 +290,15 @@ void runMainApp(bool startService) async {
   WindowOptions windowOptions = getHiddenTitleBarWindowOptions(
       isMainWindow: true, alwaysOnTop: alwaysOnTop);
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    // Restore the location of the main window before window hide or show.
-    await restoreWindowPosition(WindowType.Main);
+    // For Linux: skip position restoration and set small splash size directly
+    // This prevents flicker from restoring old position then moving
+    if (isLinux) {
+      await windowManager.setSize(const Size(300, 200));
+      await windowManager.center();
+    } else {
+      // Restore the location of the main window before window hide or show.
+      await restoreWindowPosition(WindowType.Main);
+    }
     // Check the startup argument, if we successfully handle the argument, we keep the main window hidden.
     final handledByUniLinks = await initUniLinks();
     debugPrint("handled by uni links: $handledByUniLinks");

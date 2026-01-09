@@ -727,6 +727,7 @@ Future<void> windowOnTop(int? id) async {
   print("Bring window '$id' on top");
   if (id == null) {
     // main window
+
     if (stateGlobal.isMinimized) {
       await windowManager.restore();
     }

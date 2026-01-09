@@ -11,7 +11,7 @@ Categories=Network;RemoteAccess;GTK;
 Keywords=internet;linux;dart;rust;remote-control;p2p;teamviewer;rust-lang;rdp;remote-desktop;vnc;
 Actions=new-window;
 StartupWMClass=xconnect
-
+X-GNOME-Autostart-enabled=true
 X-Desktop-File-Install-Version=0.23
 
 [Desktop Action new-window]

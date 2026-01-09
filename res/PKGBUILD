@@ -32,4 +32,5 @@ package() {
   install -Dm 644 $HBB/res/xconnect-link.desktop -t "${pkgdir}/usr/share/xconnect/files"
   install -Dm 644 $HBB/res/128x128@2x.png "${pkgdir}/usr/share/icons/hicolor/256x256/apps/xconnect.png"
   install -Dm 644 $HBB/res/scalable.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/xconnect.svg"
+  install -Dm 644 $HBB/res/xconnect.desktop -t "${pkgdir}/etc/xdg/autostart"
 }

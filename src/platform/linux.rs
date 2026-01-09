@@ -1773,14 +1773,12 @@ pub fn uninstall_service(show_new_window: bool, _: bool) -> bool {
         // Failed when installed + flutter run + started by `show_new_window`.
         return false;
     }
-    log::info!("Uninstalling service...");
-    let cp = switch_service(true);
+    log::info!("Stopping service (current session only)...");
     let app_name = crate::get_app_name().to_lowercase();
-    // systemctl kill rustdesk --tray, execute cp first
+    // Only stop the service, do NOT disable it - so it will auto-start on next boot
     if !run_cmds_privileged(&format!(
-        "{cp} systemctl disable {app_name}; systemctl stop {app_name};"
+        "systemctl stop {app_name};"
     )) {
-        Config::set_option("stop-service".into(), "".into());
         return true;
     }
     // systemctl stop will kill child processes, below may not be executed.

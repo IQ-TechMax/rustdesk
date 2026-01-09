@@ -343,6 +343,9 @@ def build_flutter_deb(version, features):
         'cp ../res/xconnect.desktop tmpdeb/usr/share/applications/xconnect.desktop')
     system2(
         'cp ../res/xconnect-link.desktop tmpdeb/usr/share/applications/xconnect-link.desktop')
+    system2('mkdir -p tmpdeb/etc/xdg/autostart/')
+    system2(
+        'cp ../res/xconnect.desktop tmpdeb/etc/xdg/autostart/xconnect.desktop')
     system2(
         'cp ../res/startwm.sh tmpdeb/etc/xconnect/')
     system2(
@@ -386,6 +389,9 @@ def build_deb_from_folder(version, binary_folder):
         'cp ../res/xconnect.desktop tmpdeb/usr/share/applications/xconnect.desktop')
     system2(
         'cp ../res/xconnect-link.desktop tmpdeb/usr/share/applications/xconnect-link.desktop')
+    system2('mkdir -p tmpdeb/etc/xdg/autostart/')
+    system2(
+        'cp ../res/xconnect.desktop tmpdeb/etc/xdg/autostart/xconnect.desktop')
     system2(
         "echo \"#!/bin/sh\" >> tmpdeb/usr/share/xconnect/files/polkit && chmod a+x tmpdeb/usr/share/xconnect/files/polkit")
 
@@ -615,6 +621,8 @@ def main():
                     'cp res/xconnect.desktop tmpdeb/usr/share/applications/xconnect.desktop')
                 system2(
                     'cp res/xconnect-link.desktop tmpdeb/usr/share/applications/xconnect-link.desktop')
+                os.system('mkdir -p tmpdeb/etc/xdg/autostart/')
+                os.system('cp res/xconnect.desktop tmpdeb/etc/xdg/autostart/')
                 os.system('mkdir -p tmpdeb/etc/xconnect/')
                 os.system('cp -a res/startwm.sh tmpdeb/etc/xconnect/')
                 os.system('mkdir -p tmpdeb/etc/X11/rustdesk/')

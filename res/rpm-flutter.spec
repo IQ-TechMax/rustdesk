@@ -29,6 +29,7 @@ mkdir -p "%{buildroot}/usr/bin"
 install -Dm 644 $HBB/res/xconnect.service -t "%{buildroot}/usr/share/xconnect/files"
 install -Dm 644 $HBB/res/xconnect.desktop -t "%{buildroot}/usr/share/xconnect/files"
 install -Dm 644 $HBB/res/xconnect-link.desktop -t "%{buildroot}/usr/share/xconnect/files"
+install -Dm 644 $HBB/res/xconnect.desktop -t "%{buildroot}/etc/xdg/autostart"
 install -Dm 644 $HBB/res/128x128@2x.png "%{buildroot}/usr/share/icons/hicolor/256x256/apps/xconnect.png"
 install -Dm 644 $HBB/res/scalable.svg "%{buildroot}/usr/share/icons/hicolor/scalable/apps/xconnect.svg"
 
@@ -39,6 +40,7 @@ install -Dm 644 $HBB/res/scalable.svg "%{buildroot}/usr/share/icons/hicolor/scal
 /usr/share/icons/hicolor/scalable/apps/xconnect.svg
 /usr/share/xconnect/files/xconnect.desktop
 /usr/share/xconnect/files/xconnect-link.desktop
+/etc/xdg/autostart/xconnect.desktop
 
 %changelog
 # let's skip this for now
@@ -59,7 +61,6 @@ esac
 cp /usr/share/xconnect/files/xconnect.service /etc/systemd/system/xconnect.service
 cp /usr/share/xconnect/files/xconnect.desktop /usr/share/applications/
 cp /usr/share/xconnect/files/xconnect-link.desktop /usr/share/applications/
-ln -sf /usr/share/xconnect/xconnect /usr/bin/xconnect
 systemctl daemon-reload
 systemctl enable xconnect
 systemctl start xconnect
@@ -82,12 +83,12 @@ esac
 case "$1" in
   0)
     # for uninstall
-    rm /usr/bin/xconnect || true
     rmdir /usr/lib/xconnect || true
     rmdir /usr/local/xconnect || true
     rmdir /usr/share/xconnect || true
     rm /usr/share/applications/xconnect.desktop || true
     rm /usr/share/applications/xconnect-link.desktop || true
+    rm /etc/xdg/autostart/xconnect.desktop || true
     update-desktop-database
   ;;
   1)
