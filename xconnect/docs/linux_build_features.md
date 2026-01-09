@@ -64,11 +64,22 @@ device_info_plus: ^9.1.0    # Get device serial number for xwall.io API
 | File | Purpose |
 |------|---------|
 | `flutter/lib/desktop/pages/desktop_home_page.dart` | Uses `xConnect-Logo.png` |
-| `res/xconnect.desktop` | Linux desktop entry (NEW) |
+| `res/xconnect.desktop` | Linux desktop entry + **AUTOSTART** (installed to `/etc/xdg/autostart/`) |
 | `res/xconnect-link.desktop` | Desktop shortcut (NEW) |
 | `res/xconnect.service` | systemd service (NEW) |
 | `res/rustdesk.desktop` | Modified |
 | `res/rustdesk-link.desktop` | Modified |
+
+### Autostart on Session Login (NEW - 2026-01-09)
+XConnect automatically starts when user logs in:
+- `xconnect.desktop` copied to `/etc/xdg/autostart/` during package installation
+- Contains `X-GNOME-Autostart-enabled=true`
+- Packaging scripts updated: `build.py`, `PKGBUILD`, all RPM specs, `DEBIAN/prerm`
+
+### Reduced Initial Window Size (NEW - 2026-01-09)
+Main window starts at 300x200 pixels for splash screen display:
+- Set in `flutter/lib/main.dart` (skips `restoreWindowPosition` on Linux)
+- Window is centered on screen
 
 ### flutter/lib/main.dart (275 lines added - SIGNIFICANT)
 **Linux projector-specific initialization:**

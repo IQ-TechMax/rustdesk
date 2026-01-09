@@ -9,31 +9,55 @@
 
 | Branch | Last Synced | Commit | Documented By |
 |--------|-------------|--------|---------------|
-| `windows_android_build` | 2026-01-05 | PAM file fix | LLM |
-| `linux_build` | 2026-01-05 | PAM file fix | LLM |
+| `windows_android_build` | 2026-01-09 | build.py update | LLM |
+| `linux_build` | 2026-01-09 | Autostart & reduced window | LLM |
 
 ---
 
-## Recent Updates (2026-01-05) - PAM File Fix
+## Recent Updates (2026-01-09) - Autostart & Reduced Window (linux_build)
 
-### Package Coexistence Fix (Both Branches)
+### Autostart on Session Login (linux_build only)
 
-**Issue:** XConnect `.deb` package couldn't be installed alongside original RustDesk due to file conflict at `/etc/pam.d/rustdesk`.
+**Feature:** XConnect now automatically starts when the user logs in (session startup).
 
-**Root Cause:** `build.py` was copying PAM file to `/etc/pam.d/rustdesk` instead of `/etc/pam.d/xconnect`.
+**How it works:**
+- `xconnect.desktop` is installed to `/etc/xdg/autostart/` during package installation
+- Contains `X-GNOME-Autostart-enabled=true` for GNOME desktop environments
+- Application starts with visible window (not headless)
 
 **Files Modified:**
-- `build.py` line 351: `tmpdeb/etc/pam.d/rustdesk` → `tmpdeb/etc/pam.d/xconnect`
-- `build.py` line 624 (linux_build only): Same fix
+- `build.py`: Added copy of `xconnect.desktop` to autostart dirs (lines 348, 394, 625)
+- `res/xconnect.desktop`: Added `X-GNOME-Autostart-enabled=true`
+- `res/DEBIAN/prerm`: Cleans up autostart file on uninstall
+- `res/PKGBUILD`: Installs autostart file for Arch
+- `res/rpm*.spec`: All RPM specs updated for autostart
 
-**Impact:** 
-- Linux: ✅ Fixed - XConnect and original RustDesk can now coexist
-- Windows: ✅ Not affected (no PAM on Windows)
-- Android: ✅ Not affected (uses package names for isolation)
+### Reduced Initial Window Size (linux_build only)
 
-**Verified:** Linux package conflict resolved ✅
+**Feature:** Main window starts at 300x200 pixels (splash screen size).
+
+**Files Modified:**
+- `flutter/lib/main.dart`: Sets window to 300x200 and centers it on Linux
+- `flutter/lib/common.dart`: Minor formatting
+
+**Impact:**
+- Linux: ✅ Window starts small showing logo and loader only
+- Windows: ✅ Not affected (uses standard RustDesk layout)
+- Android: ✅ Not affected
+
+### Tray Menu "Open" Restored (linux_build only)
+
+**Feature:** The "Open" menu item in system tray is now available on Linux.
+
+**Files Modified:**
+- `src/tray.rs`: Removed conditional compilation that excluded "Open" on Linux
+- `src/platform/linux.rs`: Minor cleanup
+
+**Verified:** Linux autostart, window size, tray menu ✅
 
 ---
+
+## Previous Updates (2026-01-05) - PAM File Fix
 
 ## Previous Updates (2026-01-05) - Logo Generation Scripts
 
@@ -171,6 +195,8 @@ git diff master --name-only --diff-filter=D
 
 | Date | Branch | Changes | Updated By |
 |------|--------|---------|------------|
+| 2026-01-09 | linux_build | Autostart, reduced window, tray menu | LLM |
+| 2026-01-09 | windows_android_build | build.py update | LLM |
 | 2026-01-05 | both | PAM file fix for package coexistence | LLM |
 | 2026-01-05 | both | Logo scripts, icon generation | LLM |
 | 2026-01-05 | both | Renamed .agent/docs to xconnect/docs | User |
